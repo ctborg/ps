@@ -1027,11 +1027,6 @@ function isPinkyUp(landmarks) {
 // ─────────────────────────────────────────────────────
 //  MEDIAPIPE — RAF-based, no Camera utility (which hijacks srcObject)
 // ─────────────────────────────────────────────────────
-let localRafId = null;
-let remoteRafId = null;
-let localHands = null;
-let remoteHands = null;
-
 function stopHandDetection() {
   if (localRafId)  { cancelAnimationFrame(localRafId);  localRafId  = null; }
   if (remoteRafId) { cancelAnimationFrame(remoteRafId); remoteRafId = null; }
