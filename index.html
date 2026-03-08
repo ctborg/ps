@@ -736,9 +736,11 @@ let remotePinkyUp = false;
 let bannerShowing = false;
 let localPinkyHistory  = Array(6).fill(false);
 let remotePinkyHistory = Array(6).fill(false);
-// MediaPipe Camera instances — kept so we can stop/restart on refresh
-let localCamInstance = null;
-let remoteCamInstance = null;
+// MediaPipe RAF loop IDs — cancelled on refresh so they don't fight srcObject reassignment
+let localRafId = null;
+let remoteRafId = null;
+let localHands = null;
+let remoteHands = null;
 
 const ICE_SERVERS = {
   iceServers: [
@@ -810,13 +812,12 @@ function updateDebugInfo() {
   document.getElementById('debug-info').textContent = lines.join('\n');
 }
 
-async function refreshVideoSources(isInitial = false) {
+async function refreshVideoSources() {
   const lv = document.getElementById('local-video');
   const rv = document.getElementById('remote-video');
 
-  // Stop existing MediaPipe Camera instances so they don't fight the new srcObject
-  if (localCamInstance) { try { await localCamInstance.stop(); } catch(e) {} localCamInstance = null; }
-  if (remoteCamInstance) { try { await remoteCamInstance.stop(); } catch(e) {} remoteCamInstance = null; }
+  // Cancel any active RAF loops — must happen before touching srcObject
+  stopHandDetection();
 
   // Re-assign local
   if (localStream) {
@@ -825,7 +826,7 @@ async function refreshVideoSources(isInitial = false) {
     lv.play().catch(e => console.warn('local play:', e));
   }
 
-  // Re-assign remote — try stored stream first, then pull from receivers
+  // Re-assign remote — use stored stream, or pull directly from PC receivers
   if (!remoteStream && pc) {
     const videoReceiver = pc.getReceivers().find(r => r.track?.kind === 'video');
     if (videoReceiver) remoteStream = new MediaStream([videoReceiver.track]);
@@ -836,17 +837,11 @@ async function refreshVideoSources(isInitial = false) {
     rv.play().catch(e => console.warn('remote play:', e));
   }
 
-  // Restart MediaPipe on both videos once streams are assigned
-  if (localStream) setupLocalHandDetection();
-  if (remoteStream) {
-    // Give the video element a moment to load the new srcObject
-    const startRemote = () => setupRemoteHandDetection(rv);
-    if (rv.readyState >= 1) {
-      startRemote();
-    } else {
-      rv.onloadedmetadata = startRemote;
-    }
-  }
+  // Wait for browser to load new srcObjects before feeding frames to MediaPipe
+  await new Promise(r => setTimeout(r, 250));
+
+  if (localStream)  setupLocalHandDetection();
+  if (remoteStream) setupRemoteHandDetection(rv);
 
   updateDebugInfo();
 }
@@ -873,7 +868,6 @@ async function getCamera() {
 // ─────────────────────────────────────────────────────
 function createPC() {
   pc = new RTCPeerConnection(ICE_SERVERS);
-  let remoteHandsStarted = false;
 
   pc.ontrack = (e) => {
     if (e.track.kind !== 'video') return;
@@ -1019,15 +1013,31 @@ function isPinkyUp(landmarks) {
   return (mcp.y - tip.y) > handHeight * 0.25;
 }
 
-function setupLocalHandDetection() {
-  const video = document.getElementById('local-video');
-  const canvas = document.getElementById('local-canvas');
-  const ctx = canvas.getContext('2d');
+// ─────────────────────────────────────────────────────
+//  MEDIAPIPE — RAF-based, no Camera utility (which hijacks srcObject)
+// ─────────────────────────────────────────────────────
+let localRafId = null;
+let remoteRafId = null;
+let localHands = null;
+let remoteHands = null;
 
-  const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
-  hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5 });
-  hands.onResults((results) => {
-    canvas.width = video.videoWidth || 640;
+function stopHandDetection() {
+  if (localRafId)  { cancelAnimationFrame(localRafId);  localRafId  = null; }
+  if (remoteRafId) { cancelAnimationFrame(remoteRafId); remoteRafId = null; }
+}
+
+function setupLocalHandDetection() {
+  if (localRafId) cancelAnimationFrame(localRafId);
+  const video  = document.getElementById('local-video');
+  const canvas = document.getElementById('local-canvas');
+  const ctx    = canvas.getContext('2d');
+
+  if (!localHands) {
+    localHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+    localHands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5 });
+  }
+  localHands.onResults((results) => {
+    canvas.width  = video.videoWidth  || 640;
     canvas.height = video.videoHeight || 480;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     let detected = false;
@@ -1044,25 +1054,48 @@ function setupLocalHandDetection() {
       checkBothPinkies();
     }
   });
-  localCamInstance = new Camera(video, { onFrame: async () => hands.send({ image: video }), width: 640, height: 480 });
-  localCamInstance.start();
+
+  let sending = false;
+  const loop = async () => {
+    if (video.readyState >= 2 && !video.paused && !sending) {
+      sending = true;
+      await localHands.send({ image: video }).catch(() => {});
+      sending = false;
+    }
+    localRafId = requestAnimationFrame(loop);
+  };
+  localRafId = requestAnimationFrame(loop);
 }
 
 function setupRemoteHandDetection(videoEl) {
+  if (remoteRafId) cancelAnimationFrame(remoteRafId);
   const canvas = document.getElementById('remote-canvas');
-  const ctx = canvas.getContext('2d');
-  const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
-  hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.65, minTrackingConfidence: 0.5 });
-  hands.onResults((results) => {
-    canvas.width = videoEl.videoWidth || 640;
+  const ctx    = canvas.getContext('2d');
+
+  if (!remoteHands) {
+    remoteHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+    remoteHands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.65, minTrackingConfidence: 0.5 });
+  }
+  remoteHands.onResults((results) => {
+    canvas.width  = videoEl.videoWidth  || 640;
     canvas.height = videoEl.videoHeight || 480;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (results.multiHandLandmarks?.length) {
-      drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, isPinkyUp(results.multiHandLandmarks[0]));
+      const pinky = isPinkyUp(results.multiHandLandmarks[0]);
+      drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, pinky);
     }
   });
-  remoteCamInstance = new Camera(videoEl, { onFrame: async () => hands.send({ image: videoEl }), width: 640, height: 480 });
-  remoteCamInstance.start();
+
+  let sending = false;
+  const loop = async () => {
+    if (videoEl.readyState >= 2 && !videoEl.paused && !sending) {
+      sending = true;
+      await remoteHands.send({ image: videoEl }).catch(() => {});
+      sending = false;
+    }
+    remoteRafId = requestAnimationFrame(loop);
+  };
+  remoteRafId = requestAnimationFrame(loop);
 }
 
 function drawPinkyHighlight(ctx, landmarks, w, h, pinkyUp) {
