@@ -839,17 +839,22 @@ function createPC() {
   return pc;
 }
 
-function gatherIce(pc) {
-  return new Promise((resolve) => {
-    if (pc.iceGatheringState === 'complete') { resolve(pc.localDescription); return; }
+function gatherIce(pc, localDesc) {
+  // Set local description INSIDE the promise so the listener is attached first,
+  // eliminating the race where gathering completes before we start listening.
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => resolve(pc.localDescription), 4000);
+
     const check = () => {
       if (pc.iceGatheringState === 'complete') {
+        clearTimeout(timeout);
         pc.removeEventListener('icegatheringstatechange', check);
         resolve(pc.localDescription);
       }
     };
     pc.addEventListener('icegatheringstatechange', check);
-    setTimeout(() => resolve(pc.localDescription), 3000); // fallback
+
+    pc.setLocalDescription(localDesc).catch(reject);
   });
 }
 
@@ -874,8 +879,7 @@ async function startInitiator() {
   stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
   const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  const fullOffer = await gatherIce(pc);
+  const fullOffer = await gatherIce(pc, offer);
 
   document.getElementById('loading-mediapipe').style.display = 'none';
   document.getElementById('offer-output').style.display = 'block';
@@ -923,8 +927,7 @@ async function startJoiner() {
     const offer = decodeSD(raw);
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
     const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    const fullAnswer = await gatherIce(pc);
+    const fullAnswer = await gatherIce(pc, answer);
 
     document.getElementById('loading-mediapipe-j').style.display = 'none';
     document.getElementById('answer-output').style.display = 'block';
