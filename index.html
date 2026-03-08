@@ -736,6 +736,9 @@ let remotePinkyUp = false;
 let bannerShowing = false;
 let localPinkyHistory  = Array(6).fill(false);
 let remotePinkyHistory = Array(6).fill(false);
+// MediaPipe Camera instances — kept so we can stop/restart on refresh
+let localCamInstance = null;
+let remoteCamInstance = null;
 
 const ICE_SERVERS = {
   iceServers: [
@@ -786,34 +789,9 @@ function showConnected() {
   setStep(3);
   hide('waiting-badge');
   show('section-video');
-
-  // Now elements are in the DOM and visible — safe to assign srcObject
-  const localVideo = document.getElementById('local-video');
-  const remoteVideo = document.getElementById('remote-video');
-
-  if (localStream) {
-    localVideo.srcObject = localStream;
-    localVideo.play().catch(() => {});
-  }
-
-  if (remoteStream) {
-    remoteVideo.srcObject = remoteStream;
-    remoteVideo.play().catch(() => {});
-    remoteVideo.onloadedmetadata = () => setupRemoteHandDetection(remoteVideo);
-  } else {
-    // ontrack may not have fired yet — watch for it
-    pc.ontrack = (e) => {
-      if (e.track.kind !== 'video') return;
-      remoteVideo.srcObject = e.streams && e.streams[0] ? e.streams[0] : new MediaStream([e.track]);
-      remoteVideo.play().catch(() => {});
-      remoteVideo.onloadedmetadata = () => setupRemoteHandDetection(remoteVideo);
-    };
-  }
-
-  if (localStream) setupLocalHandDetection(localStream);
-
   document.getElementById('section-video').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  setTimeout(updateDebugInfo, 500);
+  // Small delay to let the DOM paint before assigning streams + starting MediaPipe
+  setTimeout(() => refreshVideoSources(true), 300);
 }
 
 function updateDebugInfo() {
@@ -832,9 +810,13 @@ function updateDebugInfo() {
   document.getElementById('debug-info').textContent = lines.join('\n');
 }
 
-function refreshVideoSources() {
+async function refreshVideoSources(isInitial = false) {
   const lv = document.getElementById('local-video');
   const rv = document.getElementById('remote-video');
+
+  // Stop existing MediaPipe Camera instances so they don't fight the new srcObject
+  if (localCamInstance) { try { await localCamInstance.stop(); } catch(e) {} localCamInstance = null; }
+  if (remoteCamInstance) { try { await remoteCamInstance.stop(); } catch(e) {} remoteCamInstance = null; }
 
   // Re-assign local
   if (localStream) {
@@ -843,19 +825,26 @@ function refreshVideoSources() {
     lv.play().catch(e => console.warn('local play:', e));
   }
 
-  // Re-assign remote
+  // Re-assign remote — try stored stream first, then pull from receivers
+  if (!remoteStream && pc) {
+    const videoReceiver = pc.getReceivers().find(r => r.track?.kind === 'video');
+    if (videoReceiver) remoteStream = new MediaStream([videoReceiver.track]);
+  }
   if (remoteStream) {
     rv.srcObject = null;
     rv.srcObject = remoteStream;
     rv.play().catch(e => console.warn('remote play:', e));
-  } else if (pc) {
-    // Try to reconstruct remoteStream from active receivers
-    const receivers = pc.getReceivers();
-    const videoTrack = receivers.find(r => r.track && r.track.kind === 'video');
-    if (videoTrack) {
-      remoteStream = new MediaStream([videoTrack.track]);
-      rv.srcObject = remoteStream;
-      rv.play().catch(e => console.warn('remote play:', e));
+  }
+
+  // Restart MediaPipe on both videos once streams are assigned
+  if (localStream) setupLocalHandDetection();
+  if (remoteStream) {
+    // Give the video element a moment to load the new srcObject
+    const startRemote = () => setupRemoteHandDetection(rv);
+    if (rv.readyState >= 1) {
+      startRemote();
+    } else {
+      rv.onloadedmetadata = startRemote;
     }
   }
 
@@ -1030,7 +1019,7 @@ function isPinkyUp(landmarks) {
   return (mcp.y - tip.y) > handHeight * 0.25;
 }
 
-function setupLocalHandDetection(stream) {
+function setupLocalHandDetection() {
   const video = document.getElementById('local-video');
   const canvas = document.getElementById('local-canvas');
   const ctx = canvas.getContext('2d');
@@ -1055,8 +1044,8 @@ function setupLocalHandDetection(stream) {
       checkBothPinkies();
     }
   });
-  const cam = new Camera(video, { onFrame: async () => hands.send({ image: video }), width: 640, height: 480 });
-  cam.start();
+  localCamInstance = new Camera(video, { onFrame: async () => hands.send({ image: video }), width: 640, height: 480 });
+  localCamInstance.start();
 }
 
 function setupRemoteHandDetection(videoEl) {
@@ -1072,8 +1061,8 @@ function setupRemoteHandDetection(videoEl) {
       drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, isPinkyUp(results.multiHandLandmarks[0]));
     }
   });
-  const cam = new Camera(videoEl, { onFrame: async () => hands.send({ image: videoEl }), width: 640, height: 480 });
-  cam.start();
+  remoteCamInstance = new Camera(videoEl, { onFrame: async () => hands.send({ image: videoEl }), width: 640, height: 480 });
+  remoteCamInstance.start();
 }
 
 function drawPinkyHighlight(ctx, landmarks, w, h, pinkyUp) {
