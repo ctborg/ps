@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pinky Swear 🤙</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Abril+Fatface&family=DM+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --ink: #1a0a2e;
+    --paper: #fdf6e3;
+    --pink: #ff4d8d;
+    --gold: #f5c842;
+    --mint: #3dffa0;
+    --dim: #8a7a9b;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  header {
+    text-align: center;
+    padding: 2rem 1rem 1rem;
+    position: relative;
+  }
+
+  header h1 {
+    font-family: 'Abril Fatface', serif;
+    font-size: clamp(2.5rem, 8vw, 5rem);
+    color: var(--paper);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  header h1 span { color: var(--pink); }
+
+  header p {
+    color: var(--dim);
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+  }
+
+  /* Step indicator */
+  .steps {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    padding: 1.5rem 1rem 0;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .step-item {
+    flex: 1;
+    text-align: center;
+    position: relative;
+  }
+
+  .step-item::after {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: #2d1e4a;
+    z-index: 0;
+  }
+
+  .step-item:last-child::after { display: none; }
+
+  .step-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 2px solid #2d1e4a;
+    background: var(--ink);
+    margin: 0 auto 0.4rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 500;
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s;
+    color: var(--dim);
+  }
+
+  .step-dot.active {
+    border-color: var(--pink);
+    background: var(--pink);
+    color: white;
+    box-shadow: 0 0 16px rgba(255,77,141,0.5);
+  }
+
+  .step-dot.done {
+    border-color: var(--mint);
+    background: var(--mint);
+    color: var(--ink);
+  }
+
+  .step-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+
+  .step-item.active .step-label { color: var(--paper); }
+
+  /* Main container */
+  main {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  /* Panels */
+  .panel {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  .panel.active { display: block; animation: fadeUp 0.4s ease; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .panel-title {
+    font-family: 'Abril Fatface', serif;
+    font-size: 1.3rem;
+    color: var(--gold);
+    margin-bottom: 0.3rem;
+  }
+
+  .panel-sub {
+    font-size: 0.7rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 1.2rem;
+  }
+
+  /* Role selector */
+  .role-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .role-btn {
+    background: none;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 1.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    color: var(--paper);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .role-btn:hover { border-color: var(--pink); background: rgba(255,77,141,0.06); }
+  .role-btn.selected { border-color: var(--pink); background: rgba(255,77,141,0.1); box-shadow: 0 0 24px rgba(255,77,141,0.15); }
+
+  .role-emoji { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
+  .role-name { font-size: 0.9rem; font-weight: 500; display: block; }
+  .role-desc { font-size: 0.65rem; color: var(--dim); display: block; margin-top: 0.3rem; }
+
+  /* Text areas & inputs */
+  textarea, input {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: var(--paper);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    padding: 0.75rem 1rem;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  textarea:focus, input:focus { border-color: var(--pink); }
+  textarea { min-height: 90px; }
+
+  label {
+    display: block;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 0.4rem;
+    margin-top: 0.9rem;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-primary {
+    background: var(--pink);
+    color: white;
+    box-shadow: 0 4px 20px rgba(255,77,141,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(255,77,141,0.45); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    background: rgba(255,255,255,0.06);
+    color: var(--paper);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+
+  .btn-ghost {
+    background: none;
+    color: var(--dim);
+    border: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.68rem;
+  }
+  .btn-ghost:hover { color: var(--paper); border-color: rgba(255,255,255,0.2); }
+
+  .btn-row {
+    display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .status-badge .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  .status-waiting { background: rgba(245,200,66,0.1); color: var(--gold); border: 1px solid rgba(245,200,66,0.2); }
+  .status-waiting .dot { background: var(--gold); }
+  .status-connected { background: rgba(61,255,160,0.1); color: var(--mint); border: 1px solid rgba(61,255,160,0.2); }
+  .status-connected .dot { background: var(--mint); }
+  .status-error { background: rgba(255,100,100,0.1); color: #ff6464; border: 1px solid rgba(255,100,100,0.2); }
+  .status-error .dot { background: #ff6464; animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Video grid */
+  .video-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .video-wrap {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #0d0717;
+    aspect-ratio: 4/3;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .video-wrap video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transform: scaleX(-1);
+  }
+
+  .video-wrap canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: scaleX(-1);
+  }
+
+  .video-label {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--paper);
+  }
+
+  .pinky-indicator {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    font-size: 1.2rem;
+    opacity: 0.2;
+    transition: opacity 0.3s;
+  }
+  .pinky-indicator.active { opacity: 1; filter: drop-shadow(0 0 8px var(--pink)); }
+
+  /* The BIG banner */
+  #pinky-banner {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    background: rgba(10, 3, 22, 0.82);
+    backdrop-filter: blur(6px);
+  }
+
+  #pinky-banner.show { opacity: 1; pointer-events: all; }
+
+  .banner-text {
+    font-family: 'Abril Fatface', serif;
+    font-size: clamp(3rem, 14vw, 9rem);
+    color: var(--paper);
+    text-align: center;
+    line-height: 1;
+    animation: bannerPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-shadow: 0 0 80px rgba(255,77,141,0.6), 0 0 30px rgba(255,77,141,0.3);
+  }
+
+  .banner-text span { color: var(--pink); }
+
+  .banner-emoji {
+    font-size: clamp(3rem, 12vw, 7rem);
+    animation: bounce 0.6s ease infinite alternate;
+    margin-top: 1rem;
+  }
+
+  .banner-sub {
+    font-size: clamp(0.7rem, 2vw, 1rem);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-top: 1.5rem;
+    animation: fadeIn 0.5s ease 0.3s both;
+  }
+
+  @keyframes bannerPop {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes bounce {
+    from { transform: translateY(0) rotate(-10deg); }
+    to { transform: translateY(-12px) rotate(10deg); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+
+  /* Confetti particles */
+  .confetti-particle {
+    position: fixed;
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 1001;
+    animation: confettiFall linear forwards;
+  }
+
+  @keyframes confettiFall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* Tip box */
+  .tip {
+    background: rgba(245,200,66,0.06);
+    border: 1px solid rgba(245,200,66,0.15);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.68rem;
+    color: #c9a832;
+    line-height: 1.6;
+    margin-top: 1rem;
+  }
+
+  .tip strong { color: var(--gold); }
+
+  /* Copy pill */
+  .copy-pill {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+
+  .copy-pill pre {
+    flex: 1;
+    padding: 0.6rem 0.8rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--mint);
+    background: rgba(0,0,0,0.25);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .copy-pill button {
+    padding: 0 1rem;
+    background: rgba(61,255,160,0.1);
+    border: none;
+    color: var(--mint);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    cursor: pointer;
+    border-left: 1px solid rgba(255,255,255,0.08);
+    letter-spacing: 0.08em;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .copy-pill button:hover { background: rgba(61,255,160,0.2); }
+
+  /* Detection status bar */
+  .detection-bar {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    margin-bottom: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .detection-item {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.68rem;
+    color: var(--dim);
+  }
+
+  .detection-item .led {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #2d1e4a;
+    transition: all 0.3s;
+    flex-shrink: 0;
+  }
+
+  .detection-item.on .led { background: var(--mint); box-shadow: 0 0 8px var(--mint); }
+  .detection-item.on { color: var(--paper); }
+
+  hr.divider {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    margin: 1.2rem 0;
+  }
+
+  .connected-header {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  #loading-mediapipe {
+    text-align: center;
+    padding: 2rem;
+    color: var(--dim);
+    font-size: 0.75rem;
+  }
+
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-top-color: var(--pink);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pinky <span>Swear</span></h1>
+  <p>peer-to-peer · no server · real-time hand detection</p>
+</header>
+
+<div class="steps" id="steps-bar">
+  <div class="step-item" id="s1">
+    <div class="step-dot active" id="sd1">1</div>
+    <div class="step-label">Setup</div>
+  </div>
+  <div class="step-item" id="s2">
+    <div class="step-dot" id="sd2">2</div>
+    <div class="step-label">Connect</div>
+  </div>
+  <div class="step-item" id="s3">
+    <div class="step-dot" id="sd3">3</div>
+    <div class="step-label">Swear</div>
+  </div>
+</div>
+
+<main>
+
+  <!-- Step 1: Choose role -->
+  <div class="panel active" id="panel-role">
+    <div class="panel-title">Who are you?</div>
+    <div class="panel-sub">Choose your role in this pinky swear</div>
+    <div class="role-grid">
+      <button class="role-btn" id="btn-initiator" onclick="selectRole('initiator')">
+        <span class="role-emoji">🤝</span>
+        <span class="role-name">Initiator</span>
+        <span class="role-desc">Create the connection & share a code</span>
+      </button>
+      <button class="role-btn" id="btn-joiner" onclick="selectRole('joiner')">
+        <span class="role-emoji">🔗</span>
+        <span class="role-name">Joiner</span>
+        <span class="role-desc">Received a code? Join here</span>
+      </button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="role-next-btn" onclick="proceedFromRole()" disabled>
+        Continue →
+      </button>
+    </div>
+  </div>
+
+  <!-- Step 2A: Initiator flow -->
+  <div class="panel" id="panel-initiator">
+    <div class="panel-title">Share your offer</div>
+    <div class="panel-sub">Step 2 — Initiator</div>
+
+    <div id="init-step-a">
+      <p style="font-size:0.78rem; color: var(--dim); line-height:1.7;">
+        Click below to generate a connection offer. Your camera will start.<br>
+        Copy the code and send it to your partner.
+      </p>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="startInitiator()">📡 Generate Offer Code</button>
+      </div>
+    </div>
+
+    <div id="init-step-b" style="display:none">
+      <div id="loading-mediapipe" style="display:none">
+        <div class="spinner"></div>
+        Starting camera…
+      </div>
+      <div id="offer-output" style="display:none">
+        <label>Your Offer Code (copy & send to partner)</label>
+        <div class="copy-pill">
+          <pre id="offer-text"></pre>
+          <button onclick="copyOffer()">COPY</button>
+        </div>
+
+        <div class="tip">
+          <strong>📋 Instructions:</strong> Send this code to your partner. They'll paste it into the Joiner panel, then send you back an Answer Code.
+        </div>
+
+        <label style="margin-top:1.2rem">Paste Partner's Answer Code</label>
+        <textarea id="answer-input" placeholder="Paste answer code here…"></textarea>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="connectWithAnswer()">🔗 Connect!</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2B: Joiner flow -->
+  <div class="panel" id="panel-joiner">
+    <div class="panel-title">Join the swear</div>
+    <div class="panel-sub">Step 2 — Joiner</div>
+
+    <label>Paste Initiator's Offer Code</label>
+    <textarea id="offer-input" placeholder="Paste offer code here…"></textarea>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="startJoiner()">📡 Generate Answer Code</button>
+    </div>
+
+    <div id="joiner-answer-section" style="display:none">
+      <div id="loading-mediapipe-j" style="display:none">
+        <div class="spinner"></div>
+        Starting camera…
+      </div>
+      <div id="answer-output" style="display:none">
+        <label>Your Answer Code (copy & send back to initiator)</label>
+        <div class="copy-pill">
+          <pre id="answer-text"></pre>
+          <button onclick="copyAnswer()">COPY</button>
+        </div>
+        <div class="tip">
+          <strong>📋 Instructions:</strong> Send this code back to the Initiator. They'll paste it in their panel and click Connect — then you're live!
+        </div>
+        <div style="margin-top:1rem">
+          <span class="status-badge status-waiting"><span class="dot"></span>Waiting for initiator to connect…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Connected - video + detection -->
+  <div class="panel" id="panel-connected">
+    <div class="connected-header">
+      <div class="panel-title" style="margin-bottom:0">You're connected!</div>
+      <span class="status-badge status-connected" id="conn-status"><span class="dot"></span>Live</span>
+    </div>
+    <div class="panel-sub">Raise your pinky finger 🤙 to the camera</div>
+
+    <div class="detection-bar">
+      <div class="detection-item" id="det-local">
+        <div class="led"></div>
+        <span>Your pinky</span>
+      </div>
+      <div class="detection-item" id="det-remote">
+        <div class="led"></div>
+        <span>Partner's pinky</span>
+      </div>
+      <div style="margin-left:auto; font-size:0.65rem; color: var(--dim);">
+        raise pinky toward camera
+      </div>
+    </div>
+
+    <div class="video-grid">
+      <div class="video-wrap">
+        <video id="local-video" autoplay muted playsinline></video>
+        <canvas id="local-canvas"></canvas>
+        <div class="video-label">You</div>
+        <div class="pinky-indicator" id="local-pinky-icon">🤙</div>
+      </div>
+      <div class="video-wrap">
+        <video id="remote-video" autoplay playsinline></video>
+        <canvas id="remote-canvas"></canvas>
+        <div class="video-label">Partner</div>
+        <div class="pinky-indicator" id="remote-pinky-icon">🤙</div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <strong>How it works:</strong> MediaPipe Hands detects your pinky fingertip in real time. When both pinkies are raised toward the camera simultaneously — 🤙 <strong>PINKY SWEAR!</strong>
+    </div>
+  </div>
+
+</main>
+
+<!-- THE BANNER -->
+<div id="pinky-banner">
+  <div class="banner-text">PINKY<br><span>SWEAR!</span></div>
+  <div class="banner-emoji">🤙🤙</div>
+  <div class="banner-sub">Your oath has been sealed · forever bound</div>
+</div>
+
+<!-- MediaPipe CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<script>
+// ─────────────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────────────
+let role = null;
+let pc = null;
+let localStream = null;
+let dataChannel = null;
+
+// Pinky detection state
+let localPinkyUp = false;
+let remotePinkyUp = false;
+let bannerShowing = false;
+let bannerTimeout = null;
+
+// Pinky swear history for debouncing
+let localPinkyHistory = Array(6).fill(false);
+let remotePinkyHistory = Array(6).fill(false);
+
+// ─────────────────────────────────────────────────────
+//  ICE SERVERS (free STUN only — works on same network/LAN easily; TURN needed for NAT traversal)
+// ─────────────────────────────────────────────────────
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ]
+};
+
+// ─────────────────────────────────────────────────────
+//  UI HELPERS
+// ─────────────────────────────────────────────────────
+function selectRole(r) {
+  role = r;
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('btn-' + r).classList.add('selected');
+  document.getElementById('role-next-btn').disabled = false;
+}
+
+function proceedFromRole() {
+  setStep(2);
+  document.getElementById('panel-role').classList.remove('active');
+  if (role === 'initiator') {
+    document.getElementById('panel-initiator').classList.add('active');
+  } else {
+    document.getElementById('panel-joiner').classList.add('active');
+  }
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 3; i++) {
+    const dot = document.getElementById('sd' + i);
+    dot.classList.remove('active', 'done');
+    if (i < n) dot.classList.add('done'), dot.textContent = '✓';
+    else if (i === n) dot.classList.add('active'), dot.textContent = i;
+    else dot.textContent = i;
+  }
+}
+
+function showConnected() {
+  setStep(3);
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-connected').classList.add('active');
+}
+
+// ─────────────────────────────────────────────────────
+//  CAMERA
+// ─────────────────────────────────────────────────────
+async function getCamera() {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+  localStream = stream;
+  document.getElementById('local-video').srcObject = stream;
+  return stream;
+}
+
+// ─────────────────────────────────────────────────────
+//  WEBRTC HELPERS
+// ─────────────────────────────────────────────────────
+function createPC() {
+  pc = new RTCPeerConnection(ICE_SERVERS);
+
+  pc.ontrack = (e) => {
+    if (e.streams && e.streams[0]) {
+      document.getElementById('remote-video').srcObject = e.streams[0];
+      setupRemoteHandDetection(e.streams[0]);
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'connected') showConnected();
+    if (pc.connectionState === 'failed') alert('Connection failed. Try again — you may need to be on the same network, or use a TURN server for cross-network calls.');
+  };
+
+  return pc;
+}
+
+function gatherIce(pc) {
+  return new Promise((resolve) => {
+    if (pc.iceGatheringState === 'complete') { resolve(pc.localDescription); return; }
+    const check = () => {
+      if (pc.iceGatheringState === 'complete') {
+        pc.removeEventListener('icegatheringstatechange', check);
+        resolve(pc.localDescription);
+      }
+    };
+    pc.addEventListener('icegatheringstatechange', check);
+    setTimeout(() => resolve(pc.localDescription), 3000); // fallback
+  });
+}
+
+function encodeSD(sdp) { return btoa(JSON.stringify(sdp)); }
+function decodeSD(str) { return JSON.parse(atob(str.trim())); }
+
+// ─────────────────────────────────────────────────────
+//  INITIATOR FLOW
+// ─────────────────────────────────────────────────────
+async function startInitiator() {
+  document.getElementById('init-step-a').style.display = 'none';
+  document.getElementById('init-step-b').style.display = 'block';
+  document.getElementById('loading-mediapipe').style.display = 'block';
+
+  const stream = await getCamera();
+  createPC();
+
+  // Data channel for pinky state sync
+  dataChannel = pc.createDataChannel('pinky');
+  setupDataChannel(dataChannel);
+
+  stream.getTracks().forEach(t => pc.addTrack(t, stream));
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  const fullOffer = await gatherIce(pc);
+
+  document.getElementById('loading-mediapipe').style.display = 'none';
+  document.getElementById('offer-output').style.display = 'block';
+  document.getElementById('offer-text').textContent = encodeSD(fullOffer);
+
+  setupLocalHandDetection(stream);
+}
+
+async function connectWithAnswer() {
+  const raw = document.getElementById('answer-input').value.trim();
+  if (!raw) return alert('Paste the answer code first.');
+  try {
+    const answer = decodeSD(raw);
+    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+  } catch (e) { alert('Invalid answer code. Make sure you copied it completely.'); }
+}
+
+function copyOffer() {
+  navigator.clipboard.writeText(document.getElementById('offer-text').textContent);
+  const btn = document.querySelector('#offer-output .copy-pill button');
+  btn.textContent = 'COPIED!'; setTimeout(() => btn.textContent = 'COPY', 2000);
+}
+
+// ─────────────────────────────────────────────────────
+//  JOINER FLOW
+// ─────────────────────────────────────────────────────
+async function startJoiner() {
+  const raw = document.getElementById('offer-input').value.trim();
+  if (!raw) return alert('Paste the offer code first.');
+
+  document.getElementById('joiner-answer-section').style.display = 'block';
+  document.getElementById('loading-mediapipe-j').style.display = 'block';
+
+  const stream = await getCamera();
+  createPC();
+
+  pc.ondatachannel = (e) => {
+    dataChannel = e.channel;
+    setupDataChannel(dataChannel);
+  };
+
+  stream.getTracks().forEach(t => pc.addTrack(t, stream));
+
+  try {
+    const offer = decodeSD(raw);
+    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    const fullAnswer = await gatherIce(pc);
+
+    document.getElementById('loading-mediapipe-j').style.display = 'none';
+    document.getElementById('answer-output').style.display = 'block';
+    document.getElementById('answer-text').textContent = encodeSD(fullAnswer);
+    setupLocalHandDetection(stream);
+  } catch (e) {
+    alert('Invalid offer code. Make sure you copied it completely.');
+    console.error(e);
+  }
+}
+
+function copyAnswer() {
+  navigator.clipboard.writeText(document.getElementById('answer-text').textContent);
+  const btn = document.querySelector('#answer-output .copy-pill button');
+  btn.textContent = 'COPIED!'; setTimeout(() => btn.textContent = 'COPY', 2000);
+}
+
+// ─────────────────────────────────────────────────────
+//  DATA CHANNEL — sync pinky state
+// ─────────────────────────────────────────────────────
+function setupDataChannel(dc) {
+  dc.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'pinky') {
+      remotePinkyHistory.shift();
+      remotePinkyHistory.push(msg.up);
+      const stableRemote = remotePinkyHistory.filter(Boolean).length >= 4;
+      setRemotePinky(stableRemote);
+    }
+  };
+}
+
+function sendPinkyState(up) {
+  if (dataChannel && dataChannel.readyState === 'open') {
+    dataChannel.send(JSON.stringify({ type: 'pinky', up }));
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  MEDIAPIPE HAND DETECTION
+// ─────────────────────────────────────────────────────
+
+// Pinky finger tip = landmark 20, pinky MCP = landmark 17
+// "Pinky up" = tip is meaningfully above MCP (in normalized coords, lower Y = higher on screen)
+function isPinkyUp(landmarks) {
+  if (!landmarks) return false;
+  const tip = landmarks[20];  // pinky tip
+  const mcp = landmarks[17];  // pinky knuckle base
+  const wrist = landmarks[0];
+  // Pinky tip should be above MCP by at least 5% of hand height
+  const handHeight = Math.abs(wrist.y - landmarks[9].y);
+  return (mcp.y - tip.y) > handHeight * 0.25;
+}
+
+function setupLocalHandDetection(stream) {
+  const video = document.getElementById('local-video');
+  const canvas = document.getElementById('local-canvas');
+  const ctx = canvas.getContext('2d');
+
+  const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+  hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5 });
+
+  hands.onResults((results) => {
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    let pinkyDetected = false;
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+      const landmarks = results.multiHandLandmarks[0];
+      pinkyDetected = isPinkyUp(landmarks);
+      drawPinkyHighlight(ctx, landmarks, canvas.width, canvas.height, pinkyDetected);
+    }
+
+    localPinkyHistory.shift();
+    localPinkyHistory.push(pinkyDetected);
+    const stableLocal = localPinkyHistory.filter(Boolean).length >= 4;
+
+    if (stableLocal !== localPinkyUp) {
+      localPinkyUp = stableLocal;
+      sendPinkyState(localPinkyUp);
+      updateLocalPinkyUI(localPinkyUp);
+      checkBothPinkies();
+    }
+  });
+
+  const camera = new Camera(video, {
+    onFrame: async () => { await hands.send({ image: video }); },
+    width: 640, height: 480
+  });
+  camera.start();
+}
+
+function setupRemoteHandDetection(remoteStream) {
+  const video = document.getElementById('remote-video');
+  // For remote: we rely on data channel messages from the remote peer.
+  // But we also do local detection on the remote video as a visual overlay.
+  const canvas = document.getElementById('remote-canvas');
+  const ctx = canvas.getContext('2d');
+
+  const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+  hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.65, minTrackingConfidence: 0.5 });
+
+  hands.onResults((results) => {
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+      const landmarks = results.multiHandLandmarks[0];
+      const pinky = isPinkyUp(landmarks);
+      drawPinkyHighlight(ctx, landmarks, canvas.width, canvas.height, pinky);
+    }
+  });
+
+  const camera = new Camera(video, {
+    onFrame: async () => { await hands.send({ image: video }); },
+    width: 640, height: 480
+  });
+  camera.start();
+}
+
+function drawPinkyHighlight(ctx, landmarks, w, h, pinkyUp) {
+  // Draw minimal skeleton — just pinky finger
+  const pinkyIds = [17, 18, 19, 20];
+  ctx.strokeStyle = pinkyUp ? '#ff4d8d' : 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = pinkyUp ? 3 : 1.5;
+  ctx.shadowBlur = pinkyUp ? 12 : 0;
+  ctx.shadowColor = '#ff4d8d';
+
+  ctx.beginPath();
+  for (let i = 0; i < pinkyIds.length; i++) {
+    const lm = landmarks[pinkyIds[i]];
+    const x = lm.x * w; const y = lm.y * h;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Draw pinky tip dot
+  const tip = landmarks[20];
+  ctx.beginPath();
+  ctx.arc(tip.x * w, tip.y * h, pinkyUp ? 7 : 4, 0, Math.PI * 2);
+  ctx.fillStyle = pinkyUp ? '#ff4d8d' : 'rgba(255,255,255,0.4)';
+  ctx.shadowBlur = pinkyUp ? 16 : 0;
+  ctx.shadowColor = '#ff4d8d';
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+// ─────────────────────────────────────────────────────
+//  PINKY STATE UI
+// ─────────────────────────────────────────────────────
+function updateLocalPinkyUI(up) {
+  const det = document.getElementById('det-local');
+  const icon = document.getElementById('local-pinky-icon');
+  det.classList.toggle('on', up);
+  icon.classList.toggle('active', up);
+}
+
+function setRemotePinky(up) {
+  if (up === remotePinkyUp) return;
+  remotePinkyUp = up;
+  const det = document.getElementById('det-remote');
+  const icon = document.getElementById('remote-pinky-icon');
+  det.classList.toggle('on', up);
+  icon.classList.toggle('active', up);
+  checkBothPinkies();
+}
+
+function checkBothPinkies() {
+  if (localPinkyUp && remotePinkyUp) {
+    showBanner();
+  } else {
+    hideBanner();
+  }
+}
+
+// ─────────────────────────────────────────────────────
+//  BANNER & CONFETTI
+// ─────────────────────────────────────────────────────
+function showBanner() {
+  if (bannerShowing) return;
+  bannerShowing = true;
+  document.getElementById('pinky-banner').classList.add('show');
+  launchConfetti();
+}
+
+function hideBanner() {
+  if (!bannerShowing) return;
+  bannerShowing = false;
+  document.getElementById('pinky-banner').classList.remove('show');
+}
+
+function launchConfetti() {
+  const colors = ['#ff4d8d', '#f5c842', '#3dffa0', '#fdf6e3', '#a78bfa'];
+  for (let i = 0; i < 60; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti-particle';
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.top = '-20px';
+      el.style.background = colors[Math.floor(Math.random() * colors.length)];
+      el.style.width = (6 + Math.random() * 8) + 'px';
+      el.style.height = (6 + Math.random() * 8) + 'px';
+      el.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+      el.style.animationDelay = (Math.random() * 0.5) + 's';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }, i * 30);
+  }
+}
+</script>
+</body>
+</html>
