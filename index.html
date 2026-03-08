@@ -321,6 +321,10 @@
     height: 100%;
     object-fit: cover;
     display: block;
+  }
+
+  /* Only mirror the LOCAL video (selfie view) */
+  #local-video, #local-canvas {
     transform: scaleX(-1);
   }
 
@@ -329,7 +333,6 @@
     inset: 0;
     width: 100%;
     height: 100%;
-    transform: scaleX(-1);
   }
 
   .video-label {
@@ -800,16 +803,37 @@ async function getCamera() {
 function createPC() {
   pc = new RTCPeerConnection(ICE_SERVERS);
 
+  let remoteHandsStarted = false;
   pc.ontrack = (e) => {
+    // Only act on video tracks; audio tracks have no stream to display
+    if (e.track.kind !== 'video') return;
+    const remoteVideo = document.getElementById('remote-video');
     if (e.streams && e.streams[0]) {
-      document.getElementById('remote-video').srcObject = e.streams[0];
-      setupRemoteHandDetection(e.streams[0]);
+      remoteVideo.srcObject = e.streams[0];
+    } else {
+      // Fallback: build a stream from the track directly
+      const ms = new MediaStream([e.track]);
+      remoteVideo.srcObject = ms;
+    }
+    if (!remoteHandsStarted) {
+      remoteHandsStarted = true;
+      // Wait for video to be playing before starting MediaPipe
+      remoteVideo.onloadedmetadata = () => {
+        remoteVideo.play().catch(() => {});
+        setupRemoteHandDetection(remoteVideo);
+      };
     }
   };
 
   pc.onconnectionstatechange = () => {
+    console.log('connectionState:', pc.connectionState);
     if (pc.connectionState === 'connected') showConnected();
     if (pc.connectionState === 'failed') alert('Connection failed. Try again — you may need to be on the same network, or use a TURN server for cross-network calls.');
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    console.log('iceConnectionState:', pc.iceConnectionState);
+    if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') showConnected();
   };
 
   return pc;
@@ -994,10 +1018,7 @@ function setupLocalHandDetection(stream) {
   camera.start();
 }
 
-function setupRemoteHandDetection(remoteStream) {
-  const video = document.getElementById('remote-video');
-  // For remote: we rely on data channel messages from the remote peer.
-  // But we also do local detection on the remote video as a visual overlay.
+function setupRemoteHandDetection(videoEl) {
   const canvas = document.getElementById('remote-canvas');
   const ctx = canvas.getContext('2d');
 
@@ -1005,8 +1026,8 @@ function setupRemoteHandDetection(remoteStream) {
   hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.65, minTrackingConfidence: 0.5 });
 
   hands.onResults((results) => {
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    canvas.width = videoEl.videoWidth || 640;
+    canvas.height = videoEl.videoHeight || 480;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
@@ -1016,8 +1037,8 @@ function setupRemoteHandDetection(remoteStream) {
     }
   });
 
-  const camera = new Camera(video, {
-    onFrame: async () => { await hands.send({ image: video }); },
+  const camera = new Camera(videoEl, {
+    onFrame: async () => { await hands.send({ image: videoEl }); },
     width: 640, height: 480
   });
   camera.start();
