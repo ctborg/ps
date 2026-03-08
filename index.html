@@ -695,6 +695,15 @@
           <div class="pinky-indicator" id="remote-pinky-icon">🤙</div>
         </div>
       </div>
+
+      <!-- Debug bar -->
+      <div style="margin-top:0.75rem; padding:0.75rem 1rem; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); border-radius:10px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+          <div style="font-size:0.65rem; color:var(--dim); letter-spacing:0.08em; text-transform:uppercase;">Debug</div>
+          <button class="btn btn-ghost" onclick="refreshVideoSources()" style="font-size:0.65rem; padding:0.4rem 0.9rem;">🔄 Refresh Video Sources</button>
+        </div>
+        <div id="debug-info" style="margin-top:0.5rem; font-size:0.6rem; color:var(--dim); line-height:1.8; font-family:'DM Mono',monospace;"></div>
+      </div>
     </div>
 
   </div><!-- /panel-main -->
@@ -804,6 +813,53 @@ function showConnected() {
   if (localStream) setupLocalHandDetection(localStream);
 
   document.getElementById('section-video').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  setTimeout(updateDebugInfo, 500);
+}
+
+function updateDebugInfo() {
+  const lv = document.getElementById('local-video');
+  const rv = document.getElementById('remote-video');
+  const ls = localStream;
+  const rs = remoteStream;
+  const lines = [
+    `localStream: ${ls ? ls.getTracks().map(t => t.kind + '/' + t.readyState).join(', ') : 'null'}`,
+    `remoteStream: ${rs ? rs.getTracks().map(t => t.kind + '/' + t.readyState).join(', ') : 'null'}`,
+    `local-video srcObject: ${lv.srcObject ? 'set' : 'null'} | readyState: ${lv.readyState} | paused: ${lv.paused}`,
+    `remote-video srcObject: ${rv.srcObject ? 'set' : 'null'} | readyState: ${rv.readyState} | paused: ${rv.paused}`,
+    `pc connectionState: ${pc ? pc.connectionState : 'null'} | iceState: ${pc ? pc.iceConnectionState : 'null'}`,
+    `dataChannel: ${dataChannel ? dataChannel.readyState : 'null'}`,
+  ];
+  document.getElementById('debug-info').textContent = lines.join('\n');
+}
+
+function refreshVideoSources() {
+  const lv = document.getElementById('local-video');
+  const rv = document.getElementById('remote-video');
+
+  // Re-assign local
+  if (localStream) {
+    lv.srcObject = null;
+    lv.srcObject = localStream;
+    lv.play().catch(e => console.warn('local play:', e));
+  }
+
+  // Re-assign remote
+  if (remoteStream) {
+    rv.srcObject = null;
+    rv.srcObject = remoteStream;
+    rv.play().catch(e => console.warn('remote play:', e));
+  } else if (pc) {
+    // Try to reconstruct remoteStream from active receivers
+    const receivers = pc.getReceivers();
+    const videoTrack = receivers.find(r => r.track && r.track.kind === 'video');
+    if (videoTrack) {
+      remoteStream = new MediaStream([videoTrack.track]);
+      rv.srcObject = remoteStream;
+      rv.play().catch(e => console.warn('remote play:', e));
+    }
+  }
+
+  updateDebugInfo();
 }
 
 function copyText(preId, btn) {
