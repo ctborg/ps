@@ -1086,10 +1086,14 @@ function setupRemoteHandDetection(videoEl) {
     canvas.width  = videoEl.videoWidth  || 640;
     canvas.height = videoEl.videoHeight || 480;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let detected = false;
     if (results.multiHandLandmarks?.length) {
-      const pinky = isPinkyUp(results.multiHandLandmarks[0]);
-      drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, pinky);
+      detected = isPinkyUp(results.multiHandLandmarks[0]);
+      drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, detected);
     }
+    remotePinkyHistory.shift(); remotePinkyHistory.push(detected);
+    const stable = remotePinkyHistory.filter(Boolean).length >= 4;
+    setRemotePinky(stable);
   });
 
   let sending = false;
