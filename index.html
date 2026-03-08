@@ -184,10 +184,17 @@
     text-align: center;
     color: var(--paper);
     font-family: 'DM Mono', monospace;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .role-btn:hover { border-color: var(--pink); background: rgba(255,77,141,0.06); }
   .role-btn.selected { border-color: var(--pink); background: rgba(255,77,141,0.1); box-shadow: 0 0 24px rgba(255,77,141,0.15); }
+
+  /* Prevent child spans from swallowing the tap on iOS */
+  .role-btn * { pointer-events: none; }
 
   .role-emoji { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
   .role-name { font-size: 0.9rem; font-weight: 500; display: block; }
@@ -236,6 +243,10 @@
     cursor: pointer;
     transition: all 0.2s;
     letter-spacing: 0.05em;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .btn-primary {
@@ -576,19 +587,19 @@
     <div class="panel-title">Who are you?</div>
     <div class="panel-sub">Choose your role in this pinky swear</div>
     <div class="role-grid">
-      <button class="role-btn" id="btn-initiator" onclick="selectRole('initiator')">
+      <button class="role-btn" id="btn-initiator">
         <span class="role-emoji">🤝</span>
         <span class="role-name">Initiator</span>
         <span class="role-desc">Create the connection & share a code</span>
       </button>
-      <button class="role-btn" id="btn-joiner" onclick="selectRole('joiner')">
+      <button class="role-btn" id="btn-joiner">
         <span class="role-emoji">🔗</span>
         <span class="role-name">Joiner</span>
         <span class="role-desc">Received a code? Join here</span>
       </button>
     </div>
     <div class="btn-row">
-      <button class="btn btn-primary" id="role-next-btn" onclick="proceedFromRole()" disabled>Continue →</button>
+      <button class="btn btn-primary" id="role-next-btn" disabled>Continue →</button>
     </div>
   </div>
 
@@ -1169,6 +1180,22 @@ function launchConfetti() {
     }, i * 30);
   }
 }
+
+// ─────────────────────────────────────────────────────
+//  IOS-SAFE EVENT WIRING
+//  touchend fires before click on iOS — use it to avoid 300ms delay.
+//  We call preventDefault() to stop the subsequent click from double-firing.
+// ─────────────────────────────────────────────────────
+function onTap(el, fn) {
+  el.addEventListener('touchend', (e) => { e.preventDefault(); fn(); }, { passive: false });
+  el.addEventListener('click', fn);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  onTap(document.getElementById('btn-initiator'), () => selectRole('initiator'));
+  onTap(document.getElementById('btn-joiner'),    () => selectRole('joiner'));
+  onTap(document.getElementById('role-next-btn'), () => { if (!document.getElementById('role-next-btn').disabled) proceedFromRole(); });
+});
 </script>
 </body>
 </html>
