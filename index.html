@@ -720,6 +720,7 @@
 let role = null;
 let pc = null;
 let localStream = null;
+let remoteStream = null;
 let dataChannel = null;
 let localPinkyUp = false;
 let remotePinkyUp = false;
@@ -769,12 +770,39 @@ function setStep(n) {
   }
 }
 
+let connectedOnce = false;
 function showConnected() {
+  if (connectedOnce) return;
+  connectedOnce = true;
   setStep(3);
-  // Hide waiting badge if joiner
   hide('waiting-badge');
-  // Reveal video section (codes stay visible above)
   show('section-video');
+
+  // Now elements are in the DOM and visible — safe to assign srcObject
+  const localVideo = document.getElementById('local-video');
+  const remoteVideo = document.getElementById('remote-video');
+
+  if (localStream) {
+    localVideo.srcObject = localStream;
+    localVideo.play().catch(() => {});
+  }
+
+  if (remoteStream) {
+    remoteVideo.srcObject = remoteStream;
+    remoteVideo.play().catch(() => {});
+    remoteVideo.onloadedmetadata = () => setupRemoteHandDetection(remoteVideo);
+  } else {
+    // ontrack may not have fired yet — watch for it
+    pc.ontrack = (e) => {
+      if (e.track.kind !== 'video') return;
+      remoteVideo.srcObject = e.streams && e.streams[0] ? e.streams[0] : new MediaStream([e.track]);
+      remoteVideo.play().catch(() => {});
+      remoteVideo.onloadedmetadata = () => setupRemoteHandDetection(remoteVideo);
+    };
+  }
+
+  if (localStream) setupLocalHandDetection(localStream);
+
   document.getElementById('section-video').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -791,7 +819,7 @@ function copyText(preId, btn) {
 async function getCamera() {
   const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
   localStream = stream;
-  document.getElementById('local-video').srcObject = stream;
+  // Don't assign srcObject yet — video element is hidden. We'll assign in showConnected().
   return stream;
 }
 
@@ -804,15 +832,8 @@ function createPC() {
 
   pc.ontrack = (e) => {
     if (e.track.kind !== 'video') return;
-    const remoteVideo = document.getElementById('remote-video');
-    remoteVideo.srcObject = e.streams && e.streams[0] ? e.streams[0] : new MediaStream([e.track]);
-    if (!remoteHandsStarted) {
-      remoteHandsStarted = true;
-      remoteVideo.onloadedmetadata = () => {
-        remoteVideo.play().catch(() => {});
-        setupRemoteHandDetection(remoteVideo);
-      };
-    }
+    // Store it — don't touch the DOM yet, element may be hidden (mobile Safari bug)
+    remoteStream = e.streams && e.streams[0] ? e.streams[0] : new MediaStream([e.track]);
   };
 
   pc.onconnectionstatechange = () => {
@@ -867,8 +888,6 @@ async function startInitiator() {
   hide('init-loading');
   document.getElementById('offer-text').textContent = encodeSD(fullOffer);
   show('init-codes');
-
-  setupLocalHandDetection(stream);
 }
 
 async function connectWithAnswer() {
@@ -917,8 +936,6 @@ async function startJoiner() {
     hide('joiner-loading');
     document.getElementById('answer-text').textContent = encodeSD(fullAnswer);
     show('joiner-codes');
-
-    setupLocalHandDetection(stream);
   } catch (e) {
     alert('Invalid offer code — make sure you copied the whole thing.');
     hide('joiner-loading');
