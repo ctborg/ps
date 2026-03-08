@@ -553,6 +553,7 @@
   <p>peer-to-peer · no server · real-time hand detection</p>
 </header>
 
+
 <div class="steps" id="steps-bar">
   <div class="step-item" id="s1">
     <div class="step-dot active" id="sd1">1</div>
@@ -587,126 +588,116 @@
       </button>
     </div>
     <div class="btn-row">
-      <button class="btn btn-primary" id="role-next-btn" onclick="proceedFromRole()" disabled>
-        Continue →
-      </button>
+      <button class="btn btn-primary" id="role-next-btn" onclick="proceedFromRole()" disabled>Continue →</button>
     </div>
   </div>
 
-  <!-- Step 2A: Initiator flow -->
-  <div class="panel" id="panel-initiator">
-    <div class="panel-title">Share your offer</div>
-    <div class="panel-sub">Step 2 — Initiator</div>
+  <!-- Single unified panel for everything after role selection -->
+  <div class="panel" id="panel-main">
 
-    <div id="init-step-a">
-      <p style="font-size:0.78rem; color: var(--dim); line-height:1.7;">
-        Click below to generate a connection offer. Your camera will start.<br>
-        Copy the code and send it to your partner.
-      </p>
-      <div class="btn-row">
+    <!-- ── INITIATOR UI ── -->
+    <div id="ui-initiator" style="display:none">
+      <div class="panel-title">Initiator</div>
+      <div class="panel-sub">Step 2 — Share your offer code</div>
+
+      <!-- Before camera starts -->
+      <div id="init-pregame">
+        <p style="font-size:0.78rem; color:var(--dim); line-height:1.7; margin-bottom:1rem;">
+          Click below to start your camera and generate an Offer Code. Send it to your partner.
+        </p>
         <button class="btn btn-primary" onclick="startInitiator()">📡 Generate Offer Code</button>
       </div>
-    </div>
 
-    <div id="init-step-b" style="display:none">
-      <div id="loading-mediapipe" style="display:none">
+      <!-- Loading -->
+      <div id="init-loading" style="display:none; text-align:center; padding:1.5rem 0;">
         <div class="spinner"></div>
-        Starting camera…
+        <div style="font-size:0.75rem; color:var(--dim);">Starting camera…</div>
       </div>
-      <div id="offer-output" style="display:none">
-        <label>Your Offer Code (copy & send to partner)</label>
+
+      <!-- Codes — shown permanently once generated -->
+      <div id="init-codes" style="display:none">
+        <label>① Your Offer Code — copy & send to partner</label>
         <div class="copy-pill">
           <pre id="offer-text"></pre>
-          <button onclick="copyOffer()">COPY</button>
+          <button onclick="copyText('offer-text', this)">COPY</button>
         </div>
 
-        <div class="tip">
-          <strong>📋 Instructions:</strong> Send this code to your partner. They'll paste it into the Joiner panel, then send you back an Answer Code.
-        </div>
+        <hr class="divider">
 
-        <label style="margin-top:1.2rem">Paste Partner's Answer Code</label>
+        <label>② Paste Partner's Answer Code</label>
         <textarea id="answer-input" placeholder="Paste answer code here…"></textarea>
         <div class="btn-row">
-          <button class="btn btn-primary" onclick="connectWithAnswer()">🔗 Connect!</button>
+          <button class="btn btn-primary" id="connect-btn" onclick="connectWithAnswer()">🔗 Connect!</button>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Step 2B: Joiner flow -->
-  <div class="panel" id="panel-joiner">
-    <div class="panel-title">Join the swear</div>
-    <div class="panel-sub">Step 2 — Joiner</div>
+    <!-- ── JOINER UI ── -->
+    <div id="ui-joiner" style="display:none">
+      <div class="panel-title">Joiner</div>
+      <div class="panel-sub">Step 2 — Accept the offer & share your answer</div>
 
-    <label>Paste Initiator's Offer Code</label>
-    <textarea id="offer-input" placeholder="Paste offer code here…"></textarea>
-
-    <div class="btn-row">
-      <button class="btn btn-primary" onclick="startJoiner()">📡 Generate Answer Code</button>
-    </div>
-
-    <div id="joiner-answer-section" style="display:none">
-      <div id="loading-mediapipe-j" style="display:none">
-        <div class="spinner"></div>
-        Starting camera…
+      <!-- Offer input — always shown -->
+      <div id="joiner-input">
+        <label>① Paste Initiator's Offer Code</label>
+        <textarea id="offer-input" placeholder="Paste offer code here…"></textarea>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="startJoiner()">📡 Generate Answer Code</button>
+        </div>
       </div>
-      <div id="answer-output" style="display:none">
-        <label>Your Answer Code (copy & send back to initiator)</label>
+
+      <!-- Loading -->
+      <div id="joiner-loading" style="display:none; text-align:center; padding:1.5rem 0;">
+        <div class="spinner"></div>
+        <div style="font-size:0.75rem; color:var(--dim);">Starting camera…</div>
+      </div>
+
+      <!-- Answer code — shown permanently once generated -->
+      <div id="joiner-codes" style="display:none">
+        <hr class="divider">
+        <label>② Your Answer Code — copy & send back to initiator</label>
         <div class="copy-pill">
           <pre id="answer-text"></pre>
-          <button onclick="copyAnswer()">COPY</button>
-        </div>
-        <div class="tip">
-          <strong>📋 Instructions:</strong> Send this code back to the Initiator. They'll paste it in their panel and click Connect — then you're live!
+          <button onclick="copyText('answer-text', this)">COPY</button>
         </div>
         <div style="margin-top:1rem">
-          <span class="status-badge status-waiting"><span class="dot"></span>Waiting for initiator to connect…</span>
+          <span class="status-badge status-waiting" id="waiting-badge"><span class="dot"></span>Waiting for initiator to connect…</span>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Step 3: Connected - video + detection -->
-  <div class="panel" id="panel-connected">
-    <div class="connected-header">
-      <div class="panel-title" style="margin-bottom:0">You're connected!</div>
-      <span class="status-badge status-connected" id="conn-status"><span class="dot"></span>Live</span>
-    </div>
-    <div class="panel-sub">Raise your pinky finger 🤙 to the camera</div>
+    <!-- ── VIDEO (revealed on connection, stays alongside codes) ── -->
+    <div id="section-video" style="display:none">
+      <hr class="divider">
+      <div class="connected-header">
+        <div class="panel-title" style="margin-bottom:0">You're connected!</div>
+        <span class="status-badge status-connected"><span class="dot"></span>Live</span>
+      </div>
+      <div class="panel-sub" style="margin-bottom:0.75rem;">Raise your pinky finger 🤙 to the camera</div>
 
-    <div class="detection-bar">
-      <div class="detection-item" id="det-local">
-        <div class="led"></div>
-        <span>Your pinky</span>
+      <div class="detection-bar">
+        <div class="detection-item" id="det-local"><div class="led"></div><span>Your pinky</span></div>
+        <div class="detection-item" id="det-remote"><div class="led"></div><span>Partner's pinky</span></div>
+        <div style="margin-left:auto; font-size:0.65rem; color:var(--dim);">raise pinky toward camera</div>
       </div>
-      <div class="detection-item" id="det-remote">
-        <div class="led"></div>
-        <span>Partner's pinky</span>
-      </div>
-      <div style="margin-left:auto; font-size:0.65rem; color: var(--dim);">
-        raise pinky toward camera
-      </div>
-    </div>
 
-    <div class="video-grid">
-      <div class="video-wrap">
-        <video id="local-video" autoplay muted playsinline></video>
-        <canvas id="local-canvas"></canvas>
-        <div class="video-label">You</div>
-        <div class="pinky-indicator" id="local-pinky-icon">🤙</div>
-      </div>
-      <div class="video-wrap">
-        <video id="remote-video" autoplay playsinline></video>
-        <canvas id="remote-canvas"></canvas>
-        <div class="video-label">Partner</div>
-        <div class="pinky-indicator" id="remote-pinky-icon">🤙</div>
+      <div class="video-grid">
+        <div class="video-wrap">
+          <video id="local-video" autoplay muted playsinline></video>
+          <canvas id="local-canvas"></canvas>
+          <div class="video-label">You</div>
+          <div class="pinky-indicator" id="local-pinky-icon">🤙</div>
+        </div>
+        <div class="video-wrap">
+          <video id="remote-video" autoplay playsinline></video>
+          <canvas id="remote-canvas"></canvas>
+          <div class="video-label">Partner</div>
+          <div class="pinky-indicator" id="remote-pinky-icon">🤙</div>
+        </div>
       </div>
     </div>
 
-    <div class="tip">
-      <strong>How it works:</strong> MediaPipe Hands detects your pinky fingertip in real time. When both pinkies are raised toward the camera simultaneously — 🤙 <strong>PINKY SWEAR!</strong>
-    </div>
-  </div>
+  </div><!-- /panel-main -->
 
 </main>
 
@@ -730,20 +721,12 @@ let role = null;
 let pc = null;
 let localStream = null;
 let dataChannel = null;
-
-// Pinky detection state
 let localPinkyUp = false;
 let remotePinkyUp = false;
 let bannerShowing = false;
-let bannerTimeout = null;
-
-// Pinky swear history for debouncing
-let localPinkyHistory = Array(6).fill(false);
+let localPinkyHistory  = Array(6).fill(false);
 let remotePinkyHistory = Array(6).fill(false);
 
-// ─────────────────────────────────────────────────────
-//  ICE SERVERS (free STUN only — works on same network/LAN easily; TURN needed for NAT traversal)
-// ─────────────────────────────────────────────────────
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -754,6 +737,9 @@ const ICE_SERVERS = {
 // ─────────────────────────────────────────────────────
 //  UI HELPERS
 // ─────────────────────────────────────────────────────
+function show(id)  { document.getElementById(id).style.display = 'block'; }
+function hide(id)  { document.getElementById(id).style.display = 'none'; }
+
 function selectRole(r) {
   role = r;
   document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
@@ -763,11 +749,13 @@ function selectRole(r) {
 
 function proceedFromRole() {
   setStep(2);
-  document.getElementById('panel-role').classList.remove('active');
+  hide('panel-role');
+  show('panel-main');
+  document.getElementById('panel-main').classList.add('active');
   if (role === 'initiator') {
-    document.getElementById('panel-initiator').classList.add('active');
+    show('ui-initiator');
   } else {
-    document.getElementById('panel-joiner').classList.add('active');
+    show('ui-joiner');
   }
 }
 
@@ -775,16 +763,26 @@ function setStep(n) {
   for (let i = 1; i <= 3; i++) {
     const dot = document.getElementById('sd' + i);
     dot.classList.remove('active', 'done');
-    if (i < n) dot.classList.add('done'), dot.textContent = '✓';
-    else if (i === n) dot.classList.add('active'), dot.textContent = i;
-    else dot.textContent = i;
+    if (i < n)      { dot.classList.add('done');   dot.textContent = '✓'; }
+    else if (i === n){ dot.classList.add('active'); dot.textContent = i; }
+    else              { dot.textContent = i; }
   }
 }
 
 function showConnected() {
   setStep(3);
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('panel-connected').classList.add('active');
+  // Hide waiting badge if joiner
+  hide('waiting-badge');
+  // Reveal video section (codes stay visible above)
+  show('section-video');
+  document.getElementById('section-video').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copyText(preId, btn) {
+  const text = document.getElementById(preId).textContent;
+  navigator.clipboard.writeText(text);
+  btn.textContent = 'COPIED!';
+  setTimeout(() => btn.textContent = 'COPY', 2000);
 }
 
 // ─────────────────────────────────────────────────────
@@ -798,26 +796,18 @@ async function getCamera() {
 }
 
 // ─────────────────────────────────────────────────────
-//  WEBRTC HELPERS
+//  WEBRTC
 // ─────────────────────────────────────────────────────
 function createPC() {
   pc = new RTCPeerConnection(ICE_SERVERS);
-
   let remoteHandsStarted = false;
+
   pc.ontrack = (e) => {
-    // Only act on video tracks; audio tracks have no stream to display
     if (e.track.kind !== 'video') return;
     const remoteVideo = document.getElementById('remote-video');
-    if (e.streams && e.streams[0]) {
-      remoteVideo.srcObject = e.streams[0];
-    } else {
-      // Fallback: build a stream from the track directly
-      const ms = new MediaStream([e.track]);
-      remoteVideo.srcObject = ms;
-    }
+    remoteVideo.srcObject = e.streams && e.streams[0] ? e.streams[0] : new MediaStream([e.track]);
     if (!remoteHandsStarted) {
       remoteHandsStarted = true;
-      // Wait for video to be playing before starting MediaPipe
       remoteVideo.onloadedmetadata = () => {
         remoteVideo.play().catch(() => {});
         setupRemoteHandDetection(remoteVideo);
@@ -826,25 +816,22 @@ function createPC() {
   };
 
   pc.onconnectionstatechange = () => {
-    console.log('connectionState:', pc.connectionState);
     if (pc.connectionState === 'connected') showConnected();
-    if (pc.connectionState === 'failed') alert('Connection failed. Try again — you may need to be on the same network, or use a TURN server for cross-network calls.');
+    if (pc.connectionState === 'failed') alert('Connection failed — may need TURN server for cross-network.');
   };
 
   pc.oniceconnectionstatechange = () => {
-    console.log('iceConnectionState:', pc.iceConnectionState);
     if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') showConnected();
   };
 
   return pc;
 }
 
+// Register listener BEFORE setLocalDescription to avoid the race condition
+// where ICE gathering completes before we start listening.
 function gatherIce(pc, localDesc) {
-  // Set local description INSIDE the promise so the listener is attached first,
-  // eliminating the race where gathering completes before we start listening.
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => resolve(pc.localDescription), 4000);
-
     const check = () => {
       if (pc.iceGatheringState === 'complete') {
         clearTimeout(timeout);
@@ -853,7 +840,6 @@ function gatherIce(pc, localDesc) {
       }
     };
     pc.addEventListener('icegatheringstatechange', check);
-
     pc.setLocalDescription(localDesc).catch(reject);
   });
 }
@@ -865,25 +851,22 @@ function decodeSD(str) { return JSON.parse(atob(str.trim())); }
 //  INITIATOR FLOW
 // ─────────────────────────────────────────────────────
 async function startInitiator() {
-  document.getElementById('init-step-a').style.display = 'none';
-  document.getElementById('init-step-b').style.display = 'block';
-  document.getElementById('loading-mediapipe').style.display = 'block';
+  hide('init-pregame');
+  show('init-loading');
 
   const stream = await getCamera();
   createPC();
 
-  // Data channel for pinky state sync
   dataChannel = pc.createDataChannel('pinky');
   setupDataChannel(dataChannel);
-
   stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
   const offer = await pc.createOffer();
   const fullOffer = await gatherIce(pc, offer);
 
-  document.getElementById('loading-mediapipe').style.display = 'none';
-  document.getElementById('offer-output').style.display = 'block';
+  hide('init-loading');
   document.getElementById('offer-text').textContent = encodeSD(fullOffer);
+  show('init-codes');
 
   setupLocalHandDetection(stream);
 }
@@ -892,15 +875,13 @@ async function connectWithAnswer() {
   const raw = document.getElementById('answer-input').value.trim();
   if (!raw) return alert('Paste the answer code first.');
   try {
-    const answer = decodeSD(raw);
-    await pc.setRemoteDescription(new RTCSessionDescription(answer));
-  } catch (e) { alert('Invalid answer code. Make sure you copied it completely.'); }
-}
-
-function copyOffer() {
-  navigator.clipboard.writeText(document.getElementById('offer-text').textContent);
-  const btn = document.querySelector('#offer-output .copy-pill button');
-  btn.textContent = 'COPIED!'; setTimeout(() => btn.textContent = 'COPY', 2000);
+    await pc.setRemoteDescription(new RTCSessionDescription(decodeSD(raw)));
+    document.getElementById('connect-btn').disabled = true;
+    document.getElementById('connect-btn').textContent = '✓ Connected';
+  } catch (e) {
+    alert('Invalid answer code — make sure you copied the whole thing.');
+    console.error(e);
+  }
 }
 
 // ─────────────────────────────────────────────────────
@@ -910,43 +891,44 @@ async function startJoiner() {
   const raw = document.getElementById('offer-input').value.trim();
   if (!raw) return alert('Paste the offer code first.');
 
-  document.getElementById('joiner-answer-section').style.display = 'block';
-  document.getElementById('loading-mediapipe-j').style.display = 'block';
+  // Disable the generate button to prevent double-click
+  document.querySelector('#joiner-input .btn-primary').disabled = true;
+  show('joiner-loading');
 
-  const stream = await getCamera();
+  let stream;
+  try {
+    stream = await getCamera();
+  } catch(e) {
+    alert('Could not access camera: ' + e.message);
+    hide('joiner-loading');
+    document.querySelector('#joiner-input .btn-primary').disabled = false;
+    return;
+  }
+
   createPC();
-
-  pc.ondatachannel = (e) => {
-    dataChannel = e.channel;
-    setupDataChannel(dataChannel);
-  };
-
+  pc.ondatachannel = (e) => { dataChannel = e.channel; setupDataChannel(dataChannel); };
   stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
   try {
-    const offer = decodeSD(raw);
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
+    await pc.setRemoteDescription(new RTCSessionDescription(decodeSD(raw)));
     const answer = await pc.createAnswer();
     const fullAnswer = await gatherIce(pc, answer);
 
-    document.getElementById('loading-mediapipe-j').style.display = 'none';
-    document.getElementById('answer-output').style.display = 'block';
+    hide('joiner-loading');
     document.getElementById('answer-text').textContent = encodeSD(fullAnswer);
+    show('joiner-codes');
+
     setupLocalHandDetection(stream);
   } catch (e) {
-    alert('Invalid offer code. Make sure you copied it completely.');
+    alert('Invalid offer code — make sure you copied the whole thing.');
+    hide('joiner-loading');
+    document.querySelector('#joiner-input .btn-primary').disabled = false;
     console.error(e);
   }
 }
 
-function copyAnswer() {
-  navigator.clipboard.writeText(document.getElementById('answer-text').textContent);
-  const btn = document.querySelector('#answer-output .copy-pill button');
-  btn.textContent = 'COPIED!'; setTimeout(() => btn.textContent = 'COPY', 2000);
-}
-
 // ─────────────────────────────────────────────────────
-//  DATA CHANNEL — sync pinky state
+//  DATA CHANNEL
 // ─────────────────────────────────────────────────────
 function setupDataChannel(dc) {
   dc.onmessage = (e) => {
@@ -954,8 +936,7 @@ function setupDataChannel(dc) {
     if (msg.type === 'pinky') {
       remotePinkyHistory.shift();
       remotePinkyHistory.push(msg.up);
-      const stableRemote = remotePinkyHistory.filter(Boolean).length >= 4;
-      setRemotePinky(stableRemote);
+      setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
     }
   };
 }
@@ -967,17 +948,11 @@ function sendPinkyState(up) {
 }
 
 // ─────────────────────────────────────────────────────
-//  MEDIAPIPE HAND DETECTION
+//  MEDIAPIPE
 // ─────────────────────────────────────────────────────
-
-// Pinky finger tip = landmark 20, pinky MCP = landmark 17
-// "Pinky up" = tip is meaningfully above MCP (in normalized coords, lower Y = higher on screen)
 function isPinkyUp(landmarks) {
   if (!landmarks) return false;
-  const tip = landmarks[20];  // pinky tip
-  const mcp = landmarks[17];  // pinky knuckle base
-  const wrist = landmarks[0];
-  // Pinky tip should be above MCP by at least 5% of hand height
+  const tip = landmarks[20], mcp = landmarks[17], wrist = landmarks[0];
   const handHeight = Math.abs(wrist.y - landmarks[9].y);
   return (mcp.y - tip.y) > handHeight * 0.25;
 }
@@ -987,84 +962,60 @@ function setupLocalHandDetection(stream) {
   const canvas = document.getElementById('local-canvas');
   const ctx = canvas.getContext('2d');
 
-  const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+  const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
   hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5 });
-
   hands.onResults((results) => {
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    let pinkyDetected = false;
-    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-      const landmarks = results.multiHandLandmarks[0];
-      pinkyDetected = isPinkyUp(landmarks);
-      drawPinkyHighlight(ctx, landmarks, canvas.width, canvas.height, pinkyDetected);
+    let detected = false;
+    if (results.multiHandLandmarks?.length) {
+      detected = isPinkyUp(results.multiHandLandmarks[0]);
+      drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, detected);
     }
-
-    localPinkyHistory.shift();
-    localPinkyHistory.push(pinkyDetected);
-    const stableLocal = localPinkyHistory.filter(Boolean).length >= 4;
-
-    if (stableLocal !== localPinkyUp) {
-      localPinkyUp = stableLocal;
+    localPinkyHistory.shift(); localPinkyHistory.push(detected);
+    const stable = localPinkyHistory.filter(Boolean).length >= 4;
+    if (stable !== localPinkyUp) {
+      localPinkyUp = stable;
       sendPinkyState(localPinkyUp);
       updateLocalPinkyUI(localPinkyUp);
       checkBothPinkies();
     }
   });
-
-  const camera = new Camera(video, {
-    onFrame: async () => { await hands.send({ image: video }); },
-    width: 640, height: 480
-  });
-  camera.start();
+  const cam = new Camera(video, { onFrame: async () => hands.send({ image: video }), width: 640, height: 480 });
+  cam.start();
 }
 
 function setupRemoteHandDetection(videoEl) {
   const canvas = document.getElementById('remote-canvas');
   const ctx = canvas.getContext('2d');
-
-  const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+  const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
   hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.65, minTrackingConfidence: 0.5 });
-
   hands.onResults((results) => {
     canvas.width = videoEl.videoWidth || 640;
     canvas.height = videoEl.videoHeight || 480;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-      const landmarks = results.multiHandLandmarks[0];
-      const pinky = isPinkyUp(landmarks);
-      drawPinkyHighlight(ctx, landmarks, canvas.width, canvas.height, pinky);
+    if (results.multiHandLandmarks?.length) {
+      drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, isPinkyUp(results.multiHandLandmarks[0]));
     }
   });
-
-  const camera = new Camera(videoEl, {
-    onFrame: async () => { await hands.send({ image: videoEl }); },
-    width: 640, height: 480
-  });
-  camera.start();
+  const cam = new Camera(videoEl, { onFrame: async () => hands.send({ image: videoEl }), width: 640, height: 480 });
+  cam.start();
 }
 
 function drawPinkyHighlight(ctx, landmarks, w, h, pinkyUp) {
-  // Draw minimal skeleton — just pinky finger
-  const pinkyIds = [17, 18, 19, 20];
+  const ids = [17, 18, 19, 20];
   ctx.strokeStyle = pinkyUp ? '#ff4d8d' : 'rgba(255,255,255,0.3)';
   ctx.lineWidth = pinkyUp ? 3 : 1.5;
   ctx.shadowBlur = pinkyUp ? 12 : 0;
   ctx.shadowColor = '#ff4d8d';
-
   ctx.beginPath();
-  for (let i = 0; i < pinkyIds.length; i++) {
-    const lm = landmarks[pinkyIds[i]];
-    const x = lm.x * w; const y = lm.y * h;
-    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
+  ids.forEach((id, i) => {
+    const x = landmarks[id].x * w, y = landmarks[id].y * h;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
   ctx.stroke();
   ctx.shadowBlur = 0;
-
-  // Draw pinky tip dot
   const tip = landmarks[20];
   ctx.beginPath();
   ctx.arc(tip.x * w, tip.y * h, pinkyUp ? 7 : 4, 0, Math.PI * 2);
@@ -1076,31 +1027,23 @@ function drawPinkyHighlight(ctx, landmarks, w, h, pinkyUp) {
 }
 
 // ─────────────────────────────────────────────────────
-//  PINKY STATE UI
+//  PINKY STATE
 // ─────────────────────────────────────────────────────
 function updateLocalPinkyUI(up) {
-  const det = document.getElementById('det-local');
-  const icon = document.getElementById('local-pinky-icon');
-  det.classList.toggle('on', up);
-  icon.classList.toggle('active', up);
+  document.getElementById('det-local').classList.toggle('on', up);
+  document.getElementById('local-pinky-icon').classList.toggle('active', up);
 }
 
 function setRemotePinky(up) {
   if (up === remotePinkyUp) return;
   remotePinkyUp = up;
-  const det = document.getElementById('det-remote');
-  const icon = document.getElementById('remote-pinky-icon');
-  det.classList.toggle('on', up);
-  icon.classList.toggle('active', up);
+  document.getElementById('det-remote').classList.toggle('on', up);
+  document.getElementById('remote-pinky-icon').classList.toggle('active', up);
   checkBothPinkies();
 }
 
 function checkBothPinkies() {
-  if (localPinkyUp && remotePinkyUp) {
-    showBanner();
-  } else {
-    hideBanner();
-  }
+  localPinkyUp && remotePinkyUp ? showBanner() : hideBanner();
 }
 
 // ─────────────────────────────────────────────────────
@@ -1125,13 +1068,7 @@ function launchConfetti() {
     setTimeout(() => {
       const el = document.createElement('div');
       el.className = 'confetti-particle';
-      el.style.left = Math.random() * 100 + 'vw';
-      el.style.top = '-20px';
-      el.style.background = colors[Math.floor(Math.random() * colors.length)];
-      el.style.width = (6 + Math.random() * 8) + 'px';
-      el.style.height = (6 + Math.random() * 8) + 'px';
-      el.style.animationDuration = (1.5 + Math.random() * 2) + 's';
-      el.style.animationDelay = (Math.random() * 0.5) + 's';
+      el.style.cssText = `left:${Math.random()*100}vw;top:-20px;background:${colors[Math.floor(Math.random()*colors.length)]};width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*0.5}s`;
       document.body.appendChild(el);
       setTimeout(() => el.remove(), 4000);
     }, i * 30);
