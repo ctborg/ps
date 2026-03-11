@@ -17,7 +17,6 @@
 
 <script>
 // ── Generate favicon + app icon from canvas ───────────────────────────────
-// Draws a deep purple rounded square with two interlinked pinkies
 (function() {
   function makeIcon(size) {
     const c   = document.createElement('canvas');
@@ -25,9 +24,7 @@
     c.height  = size;
     const ctx = c.getContext('2d');
     const s   = size;
-    const r   = s * 0.22; // corner radius
-
-    // Background — deep purple rounded rect
+    const r   = s * 0.22;
     const grad = ctx.createLinearGradient(0, 0, s, s);
     grad.addColorStop(0, '#2d0f3e');
     grad.addColorStop(1, '#1a0a2e');
@@ -44,35 +41,24 @@
     ctx.closePath();
     ctx.fillStyle = grad;
     ctx.fill();
-
-    // Pink glow ring
     ctx.shadowColor = '#ff4d8d';
     ctx.shadowBlur  = s * 0.12;
-
-    // Two pinky emoji — slightly offset and rotated to look linked
     const em = s * 0.52;
     ctx.font = `${em}px serif`;
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-
-    // Left pinky — rotated slightly
     ctx.save();
     ctx.translate(s * 0.38, s * 0.52);
     ctx.rotate(-0.35);
     ctx.fillText('🤙', 0, 0);
     ctx.restore();
-
-    // Right pinky — mirrored + rotated
     ctx.save();
     ctx.translate(s * 0.62, s * 0.52);
     ctx.scale(-1, 1);
     ctx.rotate(-0.35);
     ctx.fillText('🤙', 0, 0);
     ctx.restore();
-
     ctx.shadowBlur = 0;
-
-    // Pink dot accent at bottom
     if (size >= 120) {
       ctx.beginPath();
       ctx.arc(s * 0.5, s * 0.88, s * 0.04, 0, Math.PI * 2);
@@ -82,10 +68,8 @@
       ctx.fill();
       ctx.shadowBlur = 0;
     }
-
     return c.toDataURL('image/png');
   }
-
   document.getElementById('favicon').href          = makeIcon(64);
   document.getElementById('apple-touch-icon').href = makeIcon(180);
 })();
@@ -112,7 +96,6 @@
     overflow-x: hidden;
   }
 
-  /* Grain overlay */
   body::before {
     content: '';
     position: fixed;
@@ -147,7 +130,6 @@
     margin-top: 0.5rem;
   }
 
-  /* Step indicator */
   .steps {
     display: flex;
     justify-content: center;
@@ -213,14 +195,12 @@
 
   .step-item.active .step-label { color: var(--paper); }
 
-  /* Main container */
   main {
     max-width: 700px;
     margin: 0 auto;
     padding: 1.5rem 1rem 4rem;
   }
 
-  /* Panels */
   .panel {
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.07);
@@ -252,7 +232,6 @@
     margin-bottom: 1.2rem;
   }
 
-  /* Role selector */
   .role-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -278,15 +257,12 @@
 
   .role-btn:hover { border-color: var(--pink); background: rgba(255,77,141,0.06); }
   .role-btn.selected { border-color: var(--pink); background: rgba(255,77,141,0.1); box-shadow: 0 0 24px rgba(255,77,141,0.15); }
-
-  /* Prevent child spans from swallowing the tap on iOS */
   .role-btn * { pointer-events: none; }
 
   .role-emoji { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
   .role-name { font-size: 0.9rem; font-weight: 500; display: block; }
   .role-desc { font-size: 0.65rem; color: var(--dim); display: block; margin-top: 0.3rem; }
 
-  /* Text areas & inputs */
   textarea, input {
     width: 100%;
     background: rgba(0,0,0,0.3);
@@ -315,7 +291,6 @@
     margin-top: 0.9rem;
   }
 
-  /* Buttons */
   .btn {
     display: inline-flex;
     align-items: center;
@@ -365,7 +340,6 @@
 
   .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
 
-  /* Status badge */
   .status-badge {
     display: inline-flex;
     align-items: center;
@@ -396,7 +370,6 @@
     50% { opacity: 0.3; }
   }
 
-  /* Video grid */
   .video-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -420,7 +393,6 @@
     display: block;
   }
 
-  /* Only mirror the LOCAL video (selfie view) */
   #local-video, #local-canvas {
     transform: scaleX(-1);
   }
@@ -456,7 +428,6 @@
   }
   .pinky-indicator.active { opacity: 1; filter: drop-shadow(0 0 8px var(--pink)); }
 
-  /* The BIG banner */
   #pinky-banner {
     position: fixed;
     inset: 0;
@@ -515,7 +486,6 @@
     from { opacity: 0; } to { opacity: 1; }
   }
 
-  /* Confetti particles */
   .confetti-particle {
     position: fixed;
     width: 8px; height: 8px;
@@ -530,7 +500,6 @@
     100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
   }
 
-  /* ── Photo modal ── */
   #photo-modal {
     position: fixed;
     inset: 0;
@@ -591,7 +560,6 @@
     padding: 0.6rem 1.2rem;
   }
 
-  /* Tip box */
   .tip {
     background: rgba(245,200,66,0.06);
     border: 1px solid rgba(245,200,66,0.15);
@@ -605,7 +573,6 @@
 
   .tip strong { color: var(--gold); }
 
-  /* Copy pill */
   .copy-pill {
     display: flex;
     align-items: stretch;
@@ -642,7 +609,6 @@
 
   .copy-pill button:hover { background: rgba(61,255,160,0.2); }
 
-  /* Detection status bar */
   .detection-bar {
     display: flex;
     gap: 1rem;
@@ -711,7 +677,6 @@
   <p>peer-to-peer · no server · real-time hand detection</p>
 </header>
 
-
 <div class="steps" id="steps-bar">
   <div class="step-item" id="s1">
     <div class="step-dot active" id="sd1">1</div>
@@ -752,7 +717,6 @@
 
   <!-- Single unified panel for everything after role selection -->
   <div class="panel" id="panel-main">
-
 
     <!-- ── INITIATOR UI ── -->
     <div id="ui-initiator" style="display:none">
@@ -827,7 +791,7 @@
       </div>
     </div>
 
-    <!-- ── VIDEO (revealed on connection, stays alongside codes) ── -->
+    <!-- ── VIDEO (revealed on connection) ── -->
     <div id="section-video" style="display:none">
       <hr class="divider">
       <div class="connected-header">
@@ -909,44 +873,27 @@ let remotePinkyUp = false;
 let bannerShowing = false;
 let localPinkyHistory  = Array(6).fill(false);
 let remotePinkyHistory = Array(6).fill(false);
-// MediaPipe RAF loop IDs — cancelled on refresh so they don't fight srcObject reassignment
-let localRafId = null;
-let remoteRafId = null;
-let localHands = null;
-let remoteHands = null;
 
-// ICE config fetched from backend at connection time — keeps TURN credentials
-// out of HTML source. Falls back to STUN-only if fetch fails.
-let ICE_SERVERS = {
+// ── Single shared MediaPipe Hands instance ──────────────────────────────────
+// Using ONE instance avoids the WASM Module collision that happens when two
+// Hands objects load the same simd wasm binary simultaneously.  We time-slice:
+// alternate sends between local and remote video each RAF tick.
+let sharedHands = null;       // the single Hands instance
+let handsRafId  = null;       // the single RAF loop ID
+let handsReady  = false;      // true after first successful init
+let handsSending = false;     // guard against overlapping sends
+let handsLocalVideo  = null;  // reference to local  <video>
+let handsRemoteVideo = null;  // reference to remote <video>
+let handsTurn = 'local';      // which video to process this tick
+
+const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
   ]
 };
 
-async function loadIceConfig() {
-  try {
-    const res = await fetch(`${SIGNAL_URL}/ice-config`);
-    if (res.ok) {
-      ICE_SERVERS = await res.json();
-      const hasTurn = ICE_SERVERS.iceServers.some(s => {
-        const urls = Array.isArray(s.urls) ? s.urls : [s.urls];
-        return urls.some(u => u.startsWith('turn:') || u.startsWith('turns:'));
-      });
-      console.log(`[ICE] Loaded ${ICE_SERVERS.iceServers.length} servers. TURN: ${hasTurn ? '✅ yes' : '❌ no — check CF env vars on Cloud Run'}`);
-    } else {
-      console.warn(`[ICE] /ice-config returned ${res.status}, using STUN-only fallback`);
-    }
-  } catch (e) {
-    console.warn('[ICE] Could not fetch ICE config, using STUN-only fallback:', e);
-  }
-}
-
-// ─────────────────────────────────────────────────────
-//  SIGNALING — Cloud Run + Firestore
-//  Replace this URL after deploying the backend
-// ─────────────────────────────────────────────────────
-const SIGNAL_URL = 'https://pinky-signal-143781468769.us-central1.run.app';
+const SIGNAL_URL = 'https://pinky-signal-wazbgraajq-uc.a.run.app';
 
 async function apiPost(path, body) {
   const r = await fetch(SIGNAL_URL + path, {
@@ -964,8 +911,6 @@ async function apiGet(path) {
   return r.json();
 }
 
-// Long-poll for answer — retries on 202 (server timed out its own wait window),
-// gives up after totalTimeoutMs. Each retry = 1 Firestore read, not one per second.
 async function waitForAnswer(roomCode, totalTimeoutMs = 120_000) {
   const start = Date.now();
   while (Date.now() - start < totalTimeoutMs) {
@@ -974,7 +919,7 @@ async function waitForAnswer(roomCode, totalTimeoutMs = 120_000) {
       const data = await r.json();
       return data.answer;
     }
-    if (r.status === 202) continue; // server hit its window, retry immediately
+    if (r.status === 202) continue;
     const text = await r.text();
     throw new Error(`/wait/${roomCode} → ${r.status}: ${text}`);
   }
@@ -1026,18 +971,15 @@ function showConnected() {
   hide('waiting-badge');
   show('section-video');
   document.getElementById('section-video').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  // Small delay to let the DOM paint before assigning streams + starting MediaPipe
   setTimeout(() => refreshVideoSources(true), 300);
 }
 
 function updateDebugInfo() {
   const lv = document.getElementById('local-video');
   const rv = document.getElementById('remote-video');
-  const ls = localStream;
-  const rs = remoteStream;
   const lines = [
-    `localStream: ${ls ? ls.getTracks().map(t => t.kind + '/' + t.readyState).join(', ') : 'null'}`,
-    `remoteStream: ${rs ? rs.getTracks().map(t => t.kind + '/' + t.readyState).join(', ') : 'null'}`,
+    `localStream: ${localStream ? localStream.getTracks().map(t => t.kind + '/' + t.readyState).join(', ') : 'null'}`,
+    `remoteStream: ${remoteStream ? remoteStream.getTracks().map(t => t.kind + '/' + t.readyState).join(', ') : 'null'}`,
     `local-video srcObject: ${lv.srcObject ? 'set' : 'null'} | readyState: ${lv.readyState} | paused: ${lv.paused}`,
     `remote-video srcObject: ${rv.srcObject ? 'set' : 'null'} | readyState: ${rv.readyState} | paused: ${rv.paused}`,
     `pc connectionState: ${pc ? pc.connectionState : 'null'} | iceState: ${pc ? pc.iceConnectionState : 'null'}`,
@@ -1050,17 +992,15 @@ async function refreshVideoSources() {
   const lv = document.getElementById('local-video');
   const rv = document.getElementById('remote-video');
 
-  // Cancel any active RAF loops — must happen before touching srcObject
+  // Stop the shared RAF loop before touching srcObject
   stopHandDetection();
 
-  // Re-assign local
   if (localStream) {
     lv.srcObject = null;
     lv.srcObject = localStream;
     lv.play().catch(e => console.warn('local play:', e));
   }
 
-  // Re-assign remote — use stored stream, or pull directly from PC receivers
   if (!remoteStream && pc) {
     const videoReceiver = pc.getReceivers().find(r => r.track?.kind === 'video');
     if (videoReceiver) remoteStream = new MediaStream([videoReceiver.track]);
@@ -1071,11 +1011,12 @@ async function refreshVideoSources() {
     rv.play().catch(e => console.warn('remote play:', e));
   }
 
-  // Wait for browser to load new srcObjects before feeding frames to MediaPipe
   await new Promise(r => setTimeout(r, 250));
 
-  if (localStream)  setupLocalHandDetection();
-  if (remoteStream) setupRemoteHandDetection(rv);
+  // Start the single shared detection loop
+  if (localStream || remoteStream) {
+    startSharedHandDetection(lv, rv);
+  }
 
   updateDebugInfo();
 }
@@ -1093,7 +1034,6 @@ function copyText(preId, btn) {
 async function getCamera() {
   const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
   localStream = stream;
-  // Don't assign srcObject yet — video element is hidden. We'll assign in showConnected().
   return stream;
 }
 
@@ -1105,7 +1045,6 @@ function createPC() {
 
   pc.ontrack = (e) => {
     if (e.track.kind !== 'video') return;
-    // Store it — don't touch the DOM yet, element may be hidden (mobile Safari bug)
     remoteStream = e.streams && e.streams[0] ? e.streams[0] : new MediaStream([e.track]);
   };
 
@@ -1121,8 +1060,6 @@ function createPC() {
   return pc;
 }
 
-// Register listener BEFORE setLocalDescription to avoid the race condition
-// where ICE gathering completes before we start listening.
 function gatherIce(pc, localDesc) {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => resolve(pc.localDescription), 4000);
@@ -1137,8 +1074,6 @@ function gatherIce(pc, localDesc) {
     pc.setLocalDescription(localDesc).catch(reject);
   });
 }
-
-
 
 // ─────────────────────────────────────────────────────
 //  INITIATOR FLOW
@@ -1156,7 +1091,6 @@ async function startInitiator() {
     show('init-pregame'); hide('init-loading'); return;
   }
 
-  await loadIceConfig();
   createPC();
   dataChannel = pc.createDataChannel('pinky');
   setupDataChannel(dataChannel);
@@ -1180,12 +1114,10 @@ async function startInitiator() {
   document.getElementById('room-code-display').textContent = roomCode;
   show('init-codes');
 
-  // Long-poll for partner's answer — 1 Firestore read per retry window, not per second
   try {
     const answerSdp = await waitForAnswer(roomCode);
     await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(answerSdp)));
     hide('init-waiting');
-    // Clean up the room doc now that both sides have what they need
     fetch(SIGNAL_URL + `/room/${roomCode}`, { method: 'DELETE' }).catch(() => {});
   } catch(e) {
     alert('Partner did not join in time, or an error occurred: ' + e.message);
@@ -1211,7 +1143,6 @@ async function startJoiner() {
   show('joiner-loading');
   setLoadingMsg('joiner-loading-msg', 'Looking up room…');
 
-  // Fetch offer from server
   let offerSdp;
   try {
     const data = await apiGet(`/offer/${rawCode}`);
@@ -1235,7 +1166,6 @@ async function startJoiner() {
     return;
   }
 
-  await loadIceConfig();
   createPC();
   pc.ondatachannel = (e) => { dataChannel = e.channel; setupDataChannel(dataChannel); };
   stream.getTracks().forEach(t => pc.addTrack(t, stream));
@@ -1276,8 +1206,6 @@ function setupDataChannel(dc) {
       setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
     }
     if (msg.type === 'photo_frame') {
-      // Validate size before processing — malicious peer could send huge payload
-      if (typeof msg.data !== 'string' || msg.data.length > 500_000) return;
       captureAndShowPhoto(msg.data);
     }
   };
@@ -1291,7 +1219,7 @@ function sendPinkyState(up) {
 }
 
 // ─────────────────────────────────────────────────────
-//  MEDIAPIPE
+//  MEDIAPIPE — single shared instance, time-sliced between local + remote
 // ─────────────────────────────────────────────────────
 function isPinkyUp(landmarks) {
   if (!landmarks) return false;
@@ -1300,88 +1228,96 @@ function isPinkyUp(landmarks) {
   return (mcp.y - tip.y) > handHeight * 0.25;
 }
 
-// ─────────────────────────────────────────────────────
-//  MEDIAPIPE — RAF-based, no Camera utility (which hijacks srcObject)
-// ─────────────────────────────────────────────────────
 function stopHandDetection() {
-  if (localRafId)  { cancelAnimationFrame(localRafId);  localRafId  = null; }
-  if (remoteRafId) { cancelAnimationFrame(remoteRafId); remoteRafId = null; }
+  if (handsRafId) { cancelAnimationFrame(handsRafId); handsRafId = null; }
+  handsSending = false;
 }
 
-function setupLocalHandDetection() {
-  if (localRafId) cancelAnimationFrame(localRafId);
-  const video  = document.getElementById('local-video');
-  const canvas = document.getElementById('local-canvas');
-  const ctx    = canvas.getContext('2d');
+function startSharedHandDetection(localVideo, remoteVideo) {
+  stopHandDetection();
+  handsLocalVideo  = localVideo;
+  handsRemoteVideo = remoteVideo;
+  handsTurn = 'local';
 
-  if (!localHands) {
-    localHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
-    localHands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5 });
+  // Create once, reuse forever
+  if (!sharedHands) {
+    sharedHands = new Hands({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+    });
+    sharedHands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 0,
+      minDetectionConfidence: 0.65,
+      minTrackingConfidence: 0.5
+    });
+    handsReady = false;
   }
-  localHands.onResults((results) => {
-    canvas.width  = video.videoWidth  || 640;
-    canvas.height = video.videoHeight || 480;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let detected = false;
-    if (results.multiHandLandmarks?.length) {
-      detected = isPinkyUp(results.multiHandLandmarks[0]);
-      drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, detected);
+
+  // Single onResults handler — dispatches by handsTurn at time of send
+  sharedHands.onResults((results) => {
+    const isLocal = (handsTurn === 'local');
+
+    if (isLocal) {
+      const canvas = document.getElementById('local-canvas');
+      const ctx    = canvas.getContext('2d');
+      canvas.width  = handsLocalVideo.videoWidth  || 640;
+      canvas.height = handsLocalVideo.videoHeight || 480;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let detected = false;
+      if (results.multiHandLandmarks?.length) {
+        detected = isPinkyUp(results.multiHandLandmarks[0]);
+        drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, detected);
+      }
+      localPinkyHistory.shift(); localPinkyHistory.push(detected);
+      const stable = localPinkyHistory.filter(Boolean).length >= 4;
+      if (stable !== localPinkyUp) {
+        localPinkyUp = stable;
+        sendPinkyState(localPinkyUp);
+        updateLocalPinkyUI(localPinkyUp);
+        checkBothPinkies();
+      }
+    } else {
+      const canvas = document.getElementById('remote-canvas');
+      const ctx    = canvas.getContext('2d');
+      canvas.width  = handsRemoteVideo.videoWidth  || 640;
+      canvas.height = handsRemoteVideo.videoHeight || 480;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let detected = false;
+      if (results.multiHandLandmarks?.length) {
+        detected = isPinkyUp(results.multiHandLandmarks[0]);
+        drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, detected);
+      }
+      remotePinkyHistory.shift(); remotePinkyHistory.push(detected);
+      const stable = remotePinkyHistory.filter(Boolean).length >= 4;
+      setRemotePinky(stable);
     }
-    localPinkyHistory.shift(); localPinkyHistory.push(detected);
-    const stable = localPinkyHistory.filter(Boolean).length >= 4;
-    if (stable !== localPinkyUp) {
-      localPinkyUp = stable;
-      sendPinkyState(localPinkyUp);
-      updateLocalPinkyUI(localPinkyUp);
-      checkBothPinkies();
-    }
+
+    handsSending = false;
+    // Alternate for next send
+    handsTurn = isLocal ? 'remote' : 'local';
   });
 
-  let sending = false;
   const loop = async () => {
-    if (video.readyState >= 2 && !video.paused && !sending) {
-      sending = true;
-      await localHands.send({ image: video }).catch(() => {});
-      sending = false;
+    if (!handsSending) {
+      const isLocal  = (handsTurn === 'local');
+      const videoEl  = isLocal ? handsLocalVideo : handsRemoteVideo;
+      // Only send if the video element has data and we have a partner stream for remote
+      const hasRemote = handsRemoteVideo && handsRemoteVideo.srcObject && handsRemoteVideo.readyState >= 2 && !handsRemoteVideo.paused;
+      const hasLocal  = handsLocalVideo  && handsLocalVideo.srcObject  && handsLocalVideo.readyState  >= 2 && !handsLocalVideo.paused;
+      const canSend   = isLocal ? hasLocal : hasRemote;
+
+      // If remote isn't ready yet, stay on local
+      if (!canSend && !isLocal) {
+        handsTurn = 'local';
+      } else if (canSend && videoEl.readyState >= 2) {
+        handsSending = true;
+        await sharedHands.send({ image: videoEl }).catch(() => { handsSending = false; });
+      }
     }
-    localRafId = requestAnimationFrame(loop);
+    handsRafId = requestAnimationFrame(loop);
   };
-  localRafId = requestAnimationFrame(loop);
-}
 
-function setupRemoteHandDetection(videoEl) {
-  if (remoteRafId) cancelAnimationFrame(remoteRafId);
-  const canvas = document.getElementById('remote-canvas');
-  const ctx    = canvas.getContext('2d');
-
-  if (!remoteHands) {
-    remoteHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
-    remoteHands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.65, minTrackingConfidence: 0.5 });
-  }
-  remoteHands.onResults((results) => {
-    canvas.width  = videoEl.videoWidth  || 640;
-    canvas.height = videoEl.videoHeight || 480;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let detected = false;
-    if (results.multiHandLandmarks?.length) {
-      detected = isPinkyUp(results.multiHandLandmarks[0]);
-      drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, detected);
-    }
-    remotePinkyHistory.shift(); remotePinkyHistory.push(detected);
-    const stable = remotePinkyHistory.filter(Boolean).length >= 4;
-    setRemotePinky(stable);
-  });
-
-  let sending = false;
-  const loop = async () => {
-    if (videoEl.readyState >= 2 && !videoEl.paused && !sending) {
-      sending = true;
-      await remoteHands.send({ image: videoEl }).catch(() => {});
-      sending = false;
-    }
-    remoteRafId = requestAnimationFrame(loop);
-  };
-  remoteRafId = requestAnimationFrame(loop);
+  handsRafId = requestAnimationFrame(loop);
 }
 
 function drawPinkyHighlight(ctx, landmarks, w, h, pinkyUp) {
@@ -1432,32 +1368,26 @@ function checkBothPinkies() {
 // ─────────────────────────────────────────────────────
 let photoShown = false;
 
-// Draw a single polaroid onto ctx at (cx, cy) center, rotated by angleDeg.
-// The photo area is square (SIZE x SIZE), crop-filled from the source.
 function drawPolaroid(ctx, source, cx, cy, angleDeg, label, isLocal) {
-  const SIZE  = 260; // photo area
-  const PAD   = 14;  // white border sides/top
-  const FOOT  = 52;  // white footer for label
+  const SIZE  = 260;
+  const PAD   = 14;
+  const FOOT  = 52;
   const TW    = SIZE + PAD * 2;
   const TH    = SIZE + PAD + FOOT;
 
-  // Offscreen canvas for the polaroid so we can rotate cleanly
   const off = document.createElement('canvas');
   off.width = TW; off.height = TH;
   const oc = off.getContext('2d');
 
-  // White card with slight warm tint
   oc.fillStyle = '#fdf6e3';
   oc.fillRect(0, 0, TW, TH);
 
-  // Subtle inner shadow on photo area
   oc.save();
   oc.fillStyle = '#000';
   oc.globalAlpha = 0.08;
   oc.fillRect(PAD + 2, PAD + 2, SIZE - 4, SIZE - 4);
   oc.restore();
 
-  // Crop-fill the source into the square photo area (cover behaviour)
   oc.save();
   oc.beginPath();
   oc.rect(PAD, PAD, SIZE, SIZE);
@@ -1469,17 +1399,14 @@ function drawPolaroid(ctx, source, cx, cy, angleDeg, label, isLocal) {
   const srcAR = srcW / srcH;
 
   if (srcAR > 1) {
-    // Landscape — fit height, crop sides
     sh = srcH; sw = srcH;
     sx = (srcW - sw) / 2; sy = 0;
   } else {
-    // Portrait — fit width, crop top/bottom
     sw = srcW; sh = srcW;
-    sx = 0; sy = (srcH - sh) / 4; // bias slightly upward to catch faces
+    sx = 0; sy = (srcH - sh) / 4;
   }
 
   if (isLocal) {
-    // Mirror front-facing camera
     oc.translate(PAD + SIZE, PAD);
     oc.scale(-1, 1);
     oc.drawImage(source, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
@@ -1488,21 +1415,17 @@ function drawPolaroid(ctx, source, cx, cy, angleDeg, label, isLocal) {
   }
   oc.restore();
 
-  // Label in polaroid footer
   oc.font = 'bold 13px "DM Mono", monospace';
   oc.textAlign = 'center';
   oc.fillStyle = '#1a0a2e';
   oc.fillText(label, TW / 2, TH - 18);
 
-  // Small pink pinky emoji
   oc.font = '18px serif';
   oc.fillText('🤙', TW / 2, TH - 34);
 
-  // Paste onto main canvas rotated around center
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(angleDeg * Math.PI / 180);
-  // Drop shadow
   ctx.shadowColor = 'rgba(0,0,0,0.45)';
   ctx.shadowBlur  = 18;
   ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 6;
@@ -1521,35 +1444,29 @@ function captureAndShowPhoto(remoteFrameDataUrl = null) {
   canvas.height = CH;
 
   const renderComposite = (remoteSource) => {
-    // Background — deep purple gradient
     const grad = ctx.createRadialGradient(CW/2, CH/2, 40, CW/2, CH/2, CW * 0.8);
     grad.addColorStop(0, '#2d0f3e');
     grad.addColorStop(1, '#0e0518');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, CW, CH);
 
-    // Subtle grain texture
     for (let i = 0; i < 3000; i++) {
       ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.025})`;
       ctx.fillRect(Math.random() * CW, Math.random() * CH, 1, 1);
     }
 
-    // Draw local (you) behind, partner on top — so you see your partner's face prominently
     drawPolaroid(ctx, lv, CW * 0.35, CH * 0.50, -5, 'YOU', true);
     drawPolaroid(ctx, remoteSource, CW * 0.65, CH * 0.48, 4, 'PARTNER', false);
 
-    // ── "PINKY SWEAR" stamp across the middle ──
     ctx.save();
     ctx.translate(CW / 2, CH * 0.88);
     ctx.font = 'bold 15px "DM Mono", monospace';
     ctx.textAlign = 'center';
-    ctx.letterSpacing = '0.2em';
     ctx.fillStyle = '#ff4d8d';
     ctx.globalAlpha = 0.9;
     ctx.fillText('🤙  P I N K Y  S W E A R  🤙', 0, 0);
     ctx.restore();
 
-    // ── Timestamp ──
     const now   = new Date();
     const stamp = now.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
       + '  ·  ' + now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
@@ -1559,19 +1476,16 @@ function captureAndShowPhoto(remoteFrameDataUrl = null) {
     ctx.globalAlpha = 1;
     ctx.fillText(stamp, CW / 2, CH * 0.95);
 
-    // ── Show modal ──
     document.getElementById('photo-download-btn').textContent = '⬆ Share / Save';
     document.getElementById('photo-caption').textContent = stamp;
     document.getElementById('photo-modal').classList.add('show');
   };
 
   if (remoteFrameDataUrl) {
-    // Received partner's frame — use it as remote source
     const img = new Image();
     img.onload = () => renderComposite(img);
     img.src = remoteFrameDataUrl;
   } else {
-    // Use live remote video, then send our local frame to partner
     renderComposite(rv);
 
     const localCanvas = document.createElement('canvas');
@@ -1600,25 +1514,19 @@ async function downloadPhoto() {
   const canvas = document.getElementById('photo-canvas');
   const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
 
-  // Convert dataUrl to a File for sharing
   const res   = await fetch(dataUrl);
   const blob  = await res.blob();
   const file  = new File([blob], `pinky-swear-${Date.now()}.jpg`, { type: 'image/jpeg' });
 
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({
-        files: [file],
-        title: 'Pinky Swear!',
-        text: '🤙 We pinky swore!',
-      });
+      await navigator.share({ files: [file], title: 'Pinky Swear!', text: '🤙 We pinky swore!' });
       return;
     } catch (e) {
-      if (e.name === 'AbortError') return; // user cancelled, do nothing
+      if (e.name === 'AbortError') return;
     }
   }
 
-  // Fallback for browsers without Web Share API (desktop Chrome, Firefox)
   const a = document.createElement('a');
   a.download = `pinky-swear-${Date.now()}.jpg`;
   a.href = dataUrl;
@@ -1633,7 +1541,6 @@ function showBanner() {
   bannerShowing = true;
   document.getElementById('pinky-banner').classList.add('show');
   launchConfetti();
-  // Capture the moment after a short dramatic pause
   if (!photoShown) {
     photoShown = true;
     setTimeout(() => captureAndShowPhoto(), 800);
@@ -1661,8 +1568,6 @@ function launchConfetti() {
 
 // ─────────────────────────────────────────────────────
 //  IOS-SAFE EVENT WIRING
-//  touchend fires before click on iOS — use it to avoid 300ms delay.
-//  We call preventDefault() to stop the subsequent click from double-firing.
 // ─────────────────────────────────────────────────────
 function onTap(el, fn) {
   el.addEventListener('touchend', (e) => { e.preventDefault(); fn(); }, { passive: false });
