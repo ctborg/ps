@@ -835,7 +835,7 @@ const ICE_SERVERS = {
     { urls: 'stun:stun1.l.google.com:19302' }
   ]
 };
-
+  
 const SIGNAL_URL = 'https://pinky-signal-143781468769.us-central1.run.app';
 
 async function apiPost(path, body) {
@@ -1421,10 +1421,10 @@ function captureAndShowPhoto(remoteFrameDataUrl = null) {
       ctx.fillRect(Math.random() * CW, Math.random() * CH, 1, 1);
     }
 
-    // Back polaroid first (partner), slightly right + rotated clockwise
-    drawPolaroid(ctx, remoteSource, CW * 0.56, CH * 0.50, 5, 'PARTNER', false);
-    // Front polaroid (you), slightly left + rotated counter-clockwise
-    drawPolaroid(ctx, lv, CW * 0.44, CH * 0.48, -4, 'YOU', true);
+    // Back polaroid first (partner), shifted more right + rotated clockwise
+    drawPolaroid(ctx, remoteSource, CW * 0.62, CH * 0.50, 5, 'PARTNER', false);
+    // Front polaroid (you), shifted more left + rotated counter-clockwise
+    drawPolaroid(ctx, lv, CW * 0.38, CH * 0.48, -4, 'YOU', true);
 
     // ── "PINKY SWEAR" stamp across the middle ──
     ctx.save();
@@ -1448,6 +1448,7 @@ function captureAndShowPhoto(remoteFrameDataUrl = null) {
     ctx.fillText(stamp, CW / 2, CH * 0.95);
 
     // ── Show modal ──
+    document.getElementById('photo-download-btn').textContent = '⬆ Share / Save';
     document.getElementById('photo-caption').textContent = stamp;
     document.getElementById('photo-modal').classList.add('show');
   };
@@ -1483,11 +1484,32 @@ function closePhotoModal() {
   photoShown = false;
 }
 
-function downloadPhoto() {
+async function downloadPhoto() {
   const canvas = document.getElementById('photo-canvas');
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+  // Convert dataUrl to a File for sharing
+  const res   = await fetch(dataUrl);
+  const blob  = await res.blob();
+  const file  = new File([blob], `pinky-swear-${Date.now()}.jpg`, { type: 'image/jpeg' });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: 'Pinky Swear!',
+        text: '🤙 We pinky swore!',
+      });
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return; // user cancelled, do nothing
+    }
+  }
+
+  // Fallback for browsers without Web Share API (desktop Chrome, Firefox)
   const a = document.createElement('a');
   a.download = `pinky-swear-${Date.now()}.jpg`;
-  a.href = canvas.toDataURL('image/jpeg', 0.92);
+  a.href = dataUrl;
   a.click();
 }
 
