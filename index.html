@@ -606,39 +606,47 @@
   <!-- Single unified panel for everything after role selection -->
   <div class="panel" id="panel-main">
 
+
     <!-- ── INITIATOR UI ── -->
     <div id="ui-initiator" style="display:none">
       <div class="panel-title">Initiator</div>
-      <div class="panel-sub">Step 2 — Share your offer code</div>
+      <div class="panel-sub">Step 2 — Start the connection</div>
 
-      <!-- Before camera starts -->
       <div id="init-pregame">
         <p style="font-size:0.78rem; color:var(--dim); line-height:1.7; margin-bottom:1rem;">
-          Click below to start your camera and generate an Offer Code. Send it to your partner.
+          Click below to start your camera and generate a Room Code. Share the code with your partner.
         </p>
-        <button class="btn btn-primary" onclick="startInitiator()">📡 Generate Offer Code</button>
+        <button class="btn btn-primary" onclick="startInitiator()">📡 Create Room</button>
       </div>
 
-      <!-- Loading -->
       <div id="init-loading" style="display:none; text-align:center; padding:1.5rem 0;">
         <div class="spinner"></div>
-        <div style="font-size:0.75rem; color:var(--dim);">Starting camera…</div>
+        <div id="init-loading-msg" style="font-size:0.75rem; color:var(--dim);">Starting camera…</div>
       </div>
 
-      <!-- Codes — shown permanently once generated -->
       <div id="init-codes" style="display:none">
-        <label>① Your Offer Code — copy & send to partner</label>
-        <div class="copy-pill">
-          <pre id="offer-text"></pre>
-          <button onclick="copyText('offer-text', this)">COPY</button>
+        <label>① Your Room Code — share with partner</label>
+        <div style="display:flex; align-items:center; gap:0.75rem; margin-top:0.5rem; flex-wrap:wrap;">
+          <div id="room-code-display" style="
+            font-family:'Abril Fatface',serif;
+            font-size:clamp(1.4rem,5vw,2rem);
+            color:var(--gold);
+            letter-spacing:0.05em;
+            background:rgba(245,200,66,0.08);
+            border:1px solid rgba(245,200,66,0.2);
+            border-radius:10px;
+            padding:0.6rem 1.2rem;
+            flex:1; text-align:center;
+          "></div>
+          <button class="btn btn-ghost" onclick="copyRoomCode(this)" style="flex-shrink:0">COPY</button>
         </div>
 
-        <hr class="divider">
+        <div class="tip" style="margin-top:0.75rem;">
+          <strong>📋 Waiting</strong> for your partner to enter this code and join…
+        </div>
 
-        <label>② Paste Partner's Answer Code</label>
-        <textarea id="answer-input" placeholder="Paste answer code here…"></textarea>
-        <div class="btn-row">
-          <button class="btn btn-primary" id="connect-btn" onclick="connectWithAnswer()">🔗 Connect!</button>
+        <div id="init-waiting" style="margin-top:1rem;">
+          <span class="status-badge status-waiting"><span class="dot"></span>Waiting for partner…</span>
         </div>
       </div>
     </div>
@@ -646,33 +654,28 @@
     <!-- ── JOINER UI ── -->
     <div id="ui-joiner" style="display:none">
       <div class="panel-title">Joiner</div>
-      <div class="panel-sub">Step 2 — Accept the offer & share your answer</div>
+      <div class="panel-sub">Step 2 — Enter the room code</div>
 
-      <!-- Offer input — always shown -->
       <div id="joiner-input">
-        <label>① Paste Initiator's Offer Code</label>
-        <textarea id="offer-input" placeholder="Paste offer code here…"></textarea>
+        <label>① Enter Room Code from partner</label>
+        <input type="text" id="room-code-input"
+          placeholder="e.g. HAPPY-PANDA-4821"
+          style="text-transform:uppercase; letter-spacing:0.1em; font-size:1rem; text-align:center;"
+          oninput="this.value=this.value.toUpperCase()"
+        />
         <div class="btn-row">
-          <button class="btn btn-primary" onclick="startJoiner()">📡 Generate Answer Code</button>
+          <button class="btn btn-primary" onclick="startJoiner()">🔗 Join Room</button>
         </div>
       </div>
 
-      <!-- Loading -->
       <div id="joiner-loading" style="display:none; text-align:center; padding:1.5rem 0;">
         <div class="spinner"></div>
-        <div style="font-size:0.75rem; color:var(--dim);">Starting camera…</div>
+        <div id="joiner-loading-msg" style="font-size:0.75rem; color:var(--dim);">Connecting…</div>
       </div>
 
-      <!-- Answer code — shown permanently once generated -->
       <div id="joiner-codes" style="display:none">
-        <hr class="divider">
-        <label>② Your Answer Code — copy & send back to initiator</label>
-        <div class="copy-pill">
-          <pre id="answer-text"></pre>
-          <button onclick="copyText('answer-text', this)">COPY</button>
-        </div>
         <div style="margin-top:1rem">
-          <span class="status-badge status-waiting" id="waiting-badge"><span class="dot"></span>Waiting for initiator to connect…</span>
+          <span class="status-badge status-waiting" id="waiting-badge"><span class="dot"></span>Finalising connection…</span>
         </div>
       </div>
     </div>
@@ -759,6 +762,43 @@ const ICE_SERVERS = {
     { urls: 'stun:stun1.l.google.com:19302' }
   ]
 };
+
+// ─────────────────────────────────────────────────────
+//  SIGNALING — Cloud Run + Firestore
+//  Replace this URL after deploying the backend
+// ─────────────────────────────────────────────────────
+const SIGNAL_URL = 'YOUR_CLOUD_RUN_URL'; // e.g. https://pinky-signal-xxxx-uc.a.run.app
+
+async function apiPost(path, body) {
+  const r = await fetch(SIGNAL_URL + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`${path} → ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
+async function apiGet(path) {
+  const r = await fetch(SIGNAL_URL + path);
+  if (!r.ok) throw new Error(`${path} → ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
+// Poll until condition(data) is true, with exponential back-off up to 3s
+async function pollUntil(path, condition, timeoutMs = 120_000) {
+  const start = Date.now();
+  let delay = 1000;
+  while (Date.now() - start < timeoutMs) {
+    const data = await apiGet(path);
+    if (condition(data)) return data;
+    await new Promise(r => setTimeout(r, delay));
+    delay = Math.min(delay * 1.5, 3000);
+  }
+  throw new Error('Timed out waiting for partner');
+}
+
+let currentRoomCode = null;
 
 // ─────────────────────────────────────────────────────
 //  UI HELPERS
@@ -915,8 +955,7 @@ function gatherIce(pc, localDesc) {
   });
 }
 
-function encodeSD(sdp) { return btoa(JSON.stringify(sdp)); }
-function decodeSD(str) { return JSON.parse(atob(str.trim())); }
+
 
 // ─────────────────────────────────────────────────────
 //  INITIATOR FLOW
@@ -924,52 +963,89 @@ function decodeSD(str) { return JSON.parse(atob(str.trim())); }
 async function startInitiator() {
   hide('init-pregame');
   show('init-loading');
-
-  const stream = await getCamera();
-  createPC();
-
-  dataChannel = pc.createDataChannel('pinky');
-  setupDataChannel(dataChannel);
-  stream.getTracks().forEach(t => pc.addTrack(t, stream));
-
-  const offer = await pc.createOffer();
-  const fullOffer = await gatherIce(pc, offer);
-
-  hide('init-loading');
-  document.getElementById('offer-text').textContent = encodeSD(fullOffer);
-  show('init-codes');
-}
-
-async function connectWithAnswer() {
-  const raw = document.getElementById('answer-input').value.trim();
-  if (!raw) return alert('Paste the answer code first.');
-  try {
-    await pc.setRemoteDescription(new RTCSessionDescription(decodeSD(raw)));
-    document.getElementById('connect-btn').disabled = true;
-    document.getElementById('connect-btn').textContent = '✓ Connected';
-  } catch (e) {
-    alert('Invalid answer code — make sure you copied the whole thing.');
-    console.error(e);
-  }
-}
-
-// ─────────────────────────────────────────────────────
-//  JOINER FLOW
-// ─────────────────────────────────────────────────────
-async function startJoiner() {
-  const raw = document.getElementById('offer-input').value.trim();
-  if (!raw) return alert('Paste the offer code first.');
-
-  // Disable the generate button to prevent double-click
-  document.querySelector('#joiner-input .btn-primary').disabled = true;
-  show('joiner-loading');
+  setLoadingMsg('init-loading-msg', 'Starting camera…');
 
   let stream;
   try {
     stream = await getCamera();
   } catch(e) {
     alert('Could not access camera: ' + e.message);
-    hide('joiner-loading');
+    show('init-pregame'); hide('init-loading'); return;
+  }
+
+  createPC();
+  dataChannel = pc.createDataChannel('pinky');
+  setupDataChannel(dataChannel);
+  stream.getTracks().forEach(t => pc.addTrack(t, stream));
+
+  setLoadingMsg('init-loading-msg', 'Creating room…');
+  const offer = await pc.createOffer();
+  const fullOffer = await gatherIce(pc, offer);
+
+  let roomCode;
+  try {
+    const res = await apiPost('/create', { offer: JSON.stringify(fullOffer) });
+    roomCode = res.roomCode;
+    currentRoomCode = roomCode;
+  } catch(e) {
+    alert('Could not reach signaling server: ' + e.message);
+    show('init-pregame'); hide('init-loading'); return;
+  }
+
+  hide('init-loading');
+  document.getElementById('room-code-display').textContent = roomCode;
+  show('init-codes');
+
+  // Poll for partner's answer
+  setLoadingMsg('init-loading-msg', 'Waiting for partner…');
+  try {
+    const data = await pollUntil(`/poll/${roomCode}`, d => d.answer);
+    await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(data.answer)));
+    hide('init-waiting');
+  } catch(e) {
+    alert('Partner did not join in time, or an error occurred: ' + e.message);
+  }
+}
+
+function copyRoomCode(btn) {
+  const code = document.getElementById('room-code-display').textContent;
+  navigator.clipboard.writeText(code);
+  btn.textContent = 'COPIED!';
+  setTimeout(() => btn.textContent = 'COPY', 2000);
+}
+
+// ─────────────────────────────────────────────────────
+//  JOINER FLOW
+// ─────────────────────────────────────────────────────
+async function startJoiner() {
+  const rawCode = document.getElementById('room-code-input').value.trim().toUpperCase();
+  if (!rawCode) return alert('Enter the room code first.');
+
+  document.querySelector('#joiner-input .btn-primary').disabled = true;
+  hide('joiner-input');
+  show('joiner-loading');
+  setLoadingMsg('joiner-loading-msg', 'Looking up room…');
+
+  // Fetch offer from server
+  let offerSdp;
+  try {
+    const data = await apiGet(`/poll/${rawCode}`);
+    if (!data.offer) throw new Error('Room has no offer yet');
+    offerSdp = JSON.parse(data.offer);
+  } catch(e) {
+    alert('Could not find room "' + rawCode + '": ' + e.message);
+    show('joiner-input'); hide('joiner-loading');
+    document.querySelector('#joiner-input .btn-primary').disabled = false;
+    return;
+  }
+
+  setLoadingMsg('joiner-loading-msg', 'Starting camera…');
+  let stream;
+  try {
+    stream = await getCamera();
+  } catch(e) {
+    alert('Could not access camera: ' + e.message);
+    show('joiner-input'); hide('joiner-loading');
     document.querySelector('#joiner-input .btn-primary').disabled = false;
     return;
   }
@@ -979,19 +1055,27 @@ async function startJoiner() {
   stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
   try {
-    await pc.setRemoteDescription(new RTCSessionDescription(decodeSD(raw)));
+    setLoadingMsg('joiner-loading-msg', 'Exchanging connection details…');
+    await pc.setRemoteDescription(new RTCSessionDescription(offerSdp));
     const answer = await pc.createAnswer();
     const fullAnswer = await gatherIce(pc, answer);
 
+    await apiPost(`/join/${rawCode}`, { answer: JSON.stringify(fullAnswer) });
+    currentRoomCode = rawCode;
+
     hide('joiner-loading');
-    document.getElementById('answer-text').textContent = encodeSD(fullAnswer);
     show('joiner-codes');
-  } catch (e) {
-    alert('Invalid offer code — make sure you copied the whole thing.');
-    hide('joiner-loading');
+  } catch(e) {
+    alert('Connection failed: ' + e.message);
+    show('joiner-input'); hide('joiner-loading');
     document.querySelector('#joiner-input .btn-primary').disabled = false;
     console.error(e);
   }
+}
+
+function setLoadingMsg(id, msg) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = msg;
 }
 
 // ─────────────────────────────────────────────────────
