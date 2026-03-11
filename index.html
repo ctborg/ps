@@ -1315,108 +1315,167 @@ function checkBothPinkies() {
 }
 
 // ─────────────────────────────────────────────────────
-//  PHOTO CAPTURE
+//  PHOTO CAPTURE — overlapping polaroids
 // ─────────────────────────────────────────────────────
 let photoShown = false;
 
-function captureAndShowPhoto(remoteFrameDataUrl = null) {
-  const lv = document.getElementById('local-video');
-  const rv = document.getElementById('remote-video');
-  const canvas = document.getElementById('photo-canvas');
-  const ctx = canvas.getContext('2d');
+// Draw a single polaroid onto ctx at (cx, cy) center, rotated by angleDeg.
+// The photo area is square (SIZE x SIZE), crop-filled from the source.
+function drawPolaroid(ctx, source, cx, cy, angleDeg, label, isLocal) {
+  const SIZE  = 260; // photo area
+  const PAD   = 14;  // white border sides/top
+  const FOOT  = 52;  // white footer for label
+  const TW    = SIZE + PAD * 2;
+  const TH    = SIZE + PAD + FOOT;
 
-  const W = 640, H = 240;
-  canvas.width  = W * 2;
-  canvas.height = H + 80; // extra for header/footer
+  // Offscreen canvas for the polaroid so we can rotate cleanly
+  const off = document.createElement('canvas');
+  off.width = TW; off.height = TH;
+  const oc = off.getContext('2d');
 
-  // ── Background ──
-  const grad = ctx.createLinearGradient(0, 0, W * 2, H + 80);
-  grad.addColorStop(0,   '#1a0a2e');
-  grad.addColorStop(0.5, '#2d0f3e');
-  grad.addColorStop(1,   '#1a0a2e');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W * 2, H + 80);
+  // White card with slight warm tint
+  oc.fillStyle = '#fdf6e3';
+  oc.fillRect(0, 0, TW, TH);
 
-  // ── Header ──
-  ctx.fillStyle = '#ff4d8d';
-  ctx.font = 'bold 22px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('🤙 PINKY SWEAR 🤙', W, 30);
+  // Subtle inner shadow on photo area
+  oc.save();
+  oc.fillStyle = '#000';
+  oc.globalAlpha = 0.08;
+  oc.fillRect(PAD + 2, PAD + 2, SIZE - 4, SIZE - 4);
+  oc.restore();
 
-  // ── Video frames ──
-  const drawVideo = (el, x) => {
-    if (!el || el.readyState < 2) return;
-    ctx.save();
-    // Mirror local video (it's front-facing)
-    if (x === 0) { ctx.translate(W, 0); ctx.scale(-1, 1); }
-    ctx.drawImage(el, x === 0 ? 0 : W, 38, W, H);
-    if (x === 0) ctx.restore();
-    else ctx.restore();
-  };
+  // Crop-fill the source into the square photo area (cover behaviour)
+  oc.save();
+  oc.beginPath();
+  oc.rect(PAD, PAD, SIZE, SIZE);
+  oc.clip();
 
-  // Draw local frame
-  ctx.save();
-  ctx.translate(W, 38); ctx.scale(-1, 1);
-  ctx.drawImage(lv, 0, 0, W, H);
-  ctx.restore();
+  let sw, sh, sx, sy;
+  const srcW = source.videoWidth  || source.naturalWidth  || source.width;
+  const srcH = source.videoHeight || source.naturalHeight || source.height;
+  const srcAR = srcW / srcH;
 
-  // Draw remote frame — either from live video or received data URL
-  if (remoteFrameDataUrl) {
-    const img = new Image();
-    img.onload = () => {
-      ctx.drawImage(img, W, 38, W, H);
-      finishPhoto(ctx, canvas, W, H);
-    };
-    img.src = remoteFrameDataUrl;
+  if (srcAR > 1) {
+    // Landscape — fit height, crop sides
+    sh = srcH; sw = srcH;
+    sx = (srcW - sw) / 2; sy = 0;
   } else {
-    ctx.drawImage(rv, W, 38, W, H);
-    finishPhoto(ctx, canvas, W, H);
-
-    // Send our local frame to partner so they can composite it on their side
-    const localCanvas = document.createElement('canvas');
-    localCanvas.width = W; localCanvas.height = H;
-    const lctx = localCanvas.getContext('2d');
-    lctx.save(); lctx.translate(W, 0); lctx.scale(-1, 1);
-    lctx.drawImage(lv, 0, 0, W, H);
-    lctx.restore();
-    const frameData = localCanvas.toDataURL('image/jpeg', 0.7);
-    if (dataChannel && dataChannel.readyState === 'open') {
-      dataChannel.send(JSON.stringify({ type: 'photo_frame', data: frameData }));
-    }
+    // Portrait — fit width, crop top/bottom
+    sw = srcW; sh = srcW;
+    sx = 0; sy = (srcH - sh) / 4; // bias slightly upward to catch faces
   }
+
+  if (isLocal) {
+    // Mirror front-facing camera
+    oc.translate(PAD + SIZE, PAD);
+    oc.scale(-1, 1);
+    oc.drawImage(source, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
+  } else {
+    oc.drawImage(source, sx, sy, sw, sh, PAD, PAD, SIZE, SIZE);
+  }
+  oc.restore();
+
+  // Label in polaroid footer
+  oc.font = 'bold 13px "DM Mono", monospace';
+  oc.textAlign = 'center';
+  oc.fillStyle = '#1a0a2e';
+  oc.fillText(label, TW / 2, TH - 18);
+
+  // Small pink pinky emoji
+  oc.font = '18px serif';
+  oc.fillText('🤙', TW / 2, TH - 34);
+
+  // Paste onto main canvas rotated around center
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angleDeg * Math.PI / 180);
+  // Drop shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.45)';
+  ctx.shadowBlur  = 18;
+  ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 6;
+  ctx.drawImage(off, -TW / 2, -TH / 2);
+  ctx.restore();
 }
 
-function finishPhoto(ctx, canvas, W, H) {
-  // ── Pink divider line between videos ──
-  ctx.strokeStyle = '#ff4d8d';
-  ctx.lineWidth = 2;
-  ctx.shadowBlur = 8; ctx.shadowColor = '#ff4d8d';
-  ctx.beginPath(); ctx.moveTo(W, 38); ctx.lineTo(W, 38 + H);
-  ctx.stroke(); ctx.shadowBlur = 0;
+function captureAndShowPhoto(remoteFrameDataUrl = null) {
+  const lv     = document.getElementById('local-video');
+  const rv     = document.getElementById('remote-video');
+  const canvas = document.getElementById('photo-canvas');
+  const ctx    = canvas.getContext('2d');
 
-  // ── Labels ──
-  ctx.font = '13px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.fillText('YOU', 10, 38 + H - 10);
-  ctx.textAlign = 'right';
-  ctx.fillText('PARTNER', W * 2 - 10, 38 + H - 10);
+  const CW = 620, CH = 520;
+  canvas.width  = CW;
+  canvas.height = CH;
 
-  // ── Footer timestamp ──
-  const now = new Date();
-  const stamp = now.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
-    + ' · ' + now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
-  ctx.font = '11px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(245,200,66,0.6)';
-  ctx.fillText(stamp, W, 38 + H + 24);
+  const renderComposite = (remoteSource) => {
+    // Background — deep purple gradient
+    const grad = ctx.createRadialGradient(CW/2, CH/2, 40, CW/2, CH/2, CW * 0.8);
+    grad.addColorStop(0, '#2d0f3e');
+    grad.addColorStop(1, '#0e0518');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CW, CH);
 
-  ctx.fillStyle = 'rgba(255,255,255,0.15)';
-  ctx.fillText('pinky-swear.app', W, 38 + H + 42);
+    // Subtle grain texture
+    for (let i = 0; i < 3000; i++) {
+      ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.025})`;
+      ctx.fillRect(Math.random() * CW, Math.random() * CH, 1, 1);
+    }
 
-  // ── Show modal ──
-  document.getElementById('photo-caption').textContent = stamp;
-  document.getElementById('photo-modal').classList.add('show');
+    // Back polaroid first (partner), slightly right + rotated clockwise
+    drawPolaroid(ctx, remoteSource, CW * 0.56, CH * 0.50, 5, 'PARTNER', false);
+    // Front polaroid (you), slightly left + rotated counter-clockwise
+    drawPolaroid(ctx, lv, CW * 0.44, CH * 0.48, -4, 'YOU', true);
+
+    // ── "PINKY SWEAR" stamp across the middle ──
+    ctx.save();
+    ctx.translate(CW / 2, CH * 0.88);
+    ctx.font = 'bold 15px "DM Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.letterSpacing = '0.2em';
+    ctx.fillStyle = '#ff4d8d';
+    ctx.globalAlpha = 0.9;
+    ctx.fillText('🤙  P I N K Y  S W E A R  🤙', 0, 0);
+    ctx.restore();
+
+    // ── Timestamp ──
+    const now   = new Date();
+    const stamp = now.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
+      + '  ·  ' + now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+    ctx.font = '11px "DM Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(245,200,66,0.55)';
+    ctx.globalAlpha = 1;
+    ctx.fillText(stamp, CW / 2, CH * 0.95);
+
+    // ── Show modal ──
+    document.getElementById('photo-caption').textContent = stamp;
+    document.getElementById('photo-modal').classList.add('show');
+  };
+
+  if (remoteFrameDataUrl) {
+    // Received partner's frame — use it as remote source
+    const img = new Image();
+    img.onload = () => renderComposite(img);
+    img.src = remoteFrameDataUrl;
+  } else {
+    // Use live remote video, then send our local frame to partner
+    renderComposite(rv);
+
+    const localCanvas = document.createElement('canvas');
+    localCanvas.width  = lv.videoWidth  || 640;
+    localCanvas.height = lv.videoHeight || 480;
+    const lctx = localCanvas.getContext('2d');
+    lctx.save();
+    lctx.translate(localCanvas.width, 0); lctx.scale(-1, 1);
+    lctx.drawImage(lv, 0, 0);
+    lctx.restore();
+    if (dataChannel && dataChannel.readyState === 'open') {
+      dataChannel.send(JSON.stringify({
+        type: 'photo_frame',
+        data: localCanvas.toDataURL('image/jpeg', 0.8),
+      }));
+    }
+  }
 }
 
 function closePhotoModal() {
