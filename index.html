@@ -927,9 +927,18 @@ let ICE_SERVERS = {
 async function loadIceConfig() {
   try {
     const res = await fetch(`${SIGNAL_URL}/ice-config`);
-    if (res.ok) ICE_SERVERS = await res.json();
+    if (res.ok) {
+      ICE_SERVERS = await res.json();
+      const hasTurn = ICE_SERVERS.iceServers.some(s => {
+        const urls = Array.isArray(s.urls) ? s.urls : [s.urls];
+        return urls.some(u => u.startsWith('turn:') || u.startsWith('turns:'));
+      });
+      console.log(`[ICE] Loaded ${ICE_SERVERS.iceServers.length} servers. TURN: ${hasTurn ? '✅ yes' : '❌ no — check CF env vars on Cloud Run'}`);
+    } else {
+      console.warn(`[ICE] /ice-config returned ${res.status}, using STUN-only fallback`);
+    }
   } catch (e) {
-    console.warn('Could not fetch ICE config, using STUN-only fallback:', e);
+    console.warn('[ICE] Could not fetch ICE config, using STUN-only fallback:', e);
   }
 }
 
