@@ -2,8 +2,94 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Pinky Swear 🤙</title>
+
+<!-- PWA / Home Screen meta -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pinky Swear">
+<meta name="theme-color" content="#1a0a2e">
+
+<!-- Icons injected by JS below -->
+<link id="favicon" rel="icon" type="image/png">
+<link id="apple-touch-icon" rel="apple-touch-icon">
+
+<script>
+// ── Generate favicon + app icon from canvas ───────────────────────────────
+// Draws a deep purple rounded square with two interlinked pinkies
+(function() {
+  function makeIcon(size) {
+    const c   = document.createElement('canvas');
+    c.width   = size;
+    c.height  = size;
+    const ctx = c.getContext('2d');
+    const s   = size;
+    const r   = s * 0.22; // corner radius
+
+    // Background — deep purple rounded rect
+    const grad = ctx.createLinearGradient(0, 0, s, s);
+    grad.addColorStop(0, '#2d0f3e');
+    grad.addColorStop(1, '#1a0a2e');
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(s - r, 0);
+    ctx.quadraticCurveTo(s, 0, s, r);
+    ctx.lineTo(s, s - r);
+    ctx.quadraticCurveTo(s, s, s - r, s);
+    ctx.lineTo(r, s);
+    ctx.quadraticCurveTo(0, s, 0, s - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Pink glow ring
+    ctx.shadowColor = '#ff4d8d';
+    ctx.shadowBlur  = s * 0.12;
+
+    // Two pinky emoji — slightly offset and rotated to look linked
+    const em = s * 0.52;
+    ctx.font = `${em}px serif`;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Left pinky — rotated slightly
+    ctx.save();
+    ctx.translate(s * 0.38, s * 0.52);
+    ctx.rotate(-0.35);
+    ctx.fillText('🤙', 0, 0);
+    ctx.restore();
+
+    // Right pinky — mirrored + rotated
+    ctx.save();
+    ctx.translate(s * 0.62, s * 0.52);
+    ctx.scale(-1, 1);
+    ctx.rotate(-0.35);
+    ctx.fillText('🤙', 0, 0);
+    ctx.restore();
+
+    ctx.shadowBlur = 0;
+
+    // Pink dot accent at bottom
+    if (size >= 120) {
+      ctx.beginPath();
+      ctx.arc(s * 0.5, s * 0.88, s * 0.04, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff4d8d';
+      ctx.shadowColor = '#ff4d8d';
+      ctx.shadowBlur = s * 0.06;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    return c.toDataURL('image/png');
+  }
+
+  document.getElementById('favicon').href          = makeIcon(64);
+  document.getElementById('apple-touch-icon').href = makeIcon(180);
+})();
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Abril+Fatface&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -836,6 +922,10 @@ const ICE_SERVERS = {
   ]
 };
 
+// ─────────────────────────────────────────────────────
+//  SIGNALING — Cloud Run + Firestore
+//  Replace this URL after deploying the backend
+// ─────────────────────────────────────────────────────
 const SIGNAL_URL = 'https://pinky-signal-143781468769.us-central1.run.app';
 
 async function apiPost(path, body) {
