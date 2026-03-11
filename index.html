@@ -444,6 +444,67 @@
     100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
   }
 
+  /* ── Photo modal ── */
+  #photo-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,3,22,0.92);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+  #photo-modal.show { opacity: 1; pointer-events: all; }
+
+  .photo-card {
+    background: var(--paper);
+    border-radius: 4px;
+    padding: 1.2rem 1.2rem 2rem;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+    max-width: min(92vw, 640px);
+    width: 100%;
+    animation: photoReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+
+  @keyframes photoReveal {
+    from { transform: scale(0.85) rotate(-2deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+
+  #photo-canvas {
+    width: 100%;
+    border-radius: 2px;
+    display: block;
+  }
+
+  .photo-caption {
+    text-align: center;
+    margin-top: 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--ink);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.5;
+  }
+
+  .photo-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 1.2rem;
+  }
+
+  .photo-actions .btn {
+    font-size: 0.72rem;
+    padding: 0.6rem 1.2rem;
+  }
+
   /* Tip box */
   .tip {
     background: rgba(245,200,66,0.06);
@@ -729,6 +790,18 @@
   <div class="banner-text">PINKY<br><span>SWEAR!</span></div>
   <div class="banner-emoji">🤙🤙</div>
   <div class="banner-sub">Your oath has been sealed · forever bound</div>
+</div>
+
+<!-- Photo capture modal -->
+<div id="photo-modal">
+  <div class="photo-card">
+    <canvas id="photo-canvas"></canvas>
+    <div class="photo-caption" id="photo-caption"></div>
+    <div class="photo-actions">
+      <button class="btn btn-primary" id="photo-download-btn">⬇ Save Photo</button>
+      <button class="btn btn-ghost" id="photo-close-btn">Close</button>
+    </div>
+  </div>
 </div>
 
 <!-- MediaPipe CDN -->
@@ -1090,7 +1163,12 @@ function setupDataChannel(dc) {
       remotePinkyHistory.push(msg.up);
       setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
     }
+    if (msg.type === 'photo_frame') {
+      // Partner sent us their local frame — use it to build our composite
+      captureAndShowPhoto(msg.data);
+    }
   };
+  dc.bufferedAmountLowThreshold = 65536;
 }
 
 function sendPinkyState(up) {
@@ -1237,6 +1315,124 @@ function checkBothPinkies() {
 }
 
 // ─────────────────────────────────────────────────────
+//  PHOTO CAPTURE
+// ─────────────────────────────────────────────────────
+let photoShown = false;
+
+function captureAndShowPhoto(remoteFrameDataUrl = null) {
+  const lv = document.getElementById('local-video');
+  const rv = document.getElementById('remote-video');
+  const canvas = document.getElementById('photo-canvas');
+  const ctx = canvas.getContext('2d');
+
+  const W = 640, H = 240;
+  canvas.width  = W * 2;
+  canvas.height = H + 80; // extra for header/footer
+
+  // ── Background ──
+  const grad = ctx.createLinearGradient(0, 0, W * 2, H + 80);
+  grad.addColorStop(0,   '#1a0a2e');
+  grad.addColorStop(0.5, '#2d0f3e');
+  grad.addColorStop(1,   '#1a0a2e');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W * 2, H + 80);
+
+  // ── Header ──
+  ctx.fillStyle = '#ff4d8d';
+  ctx.font = 'bold 22px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('🤙 PINKY SWEAR 🤙', W, 30);
+
+  // ── Video frames ──
+  const drawVideo = (el, x) => {
+    if (!el || el.readyState < 2) return;
+    ctx.save();
+    // Mirror local video (it's front-facing)
+    if (x === 0) { ctx.translate(W, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(el, x === 0 ? 0 : W, 38, W, H);
+    if (x === 0) ctx.restore();
+    else ctx.restore();
+  };
+
+  // Draw local frame
+  ctx.save();
+  ctx.translate(W, 38); ctx.scale(-1, 1);
+  ctx.drawImage(lv, 0, 0, W, H);
+  ctx.restore();
+
+  // Draw remote frame — either from live video or received data URL
+  if (remoteFrameDataUrl) {
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, W, 38, W, H);
+      finishPhoto(ctx, canvas, W, H);
+    };
+    img.src = remoteFrameDataUrl;
+  } else {
+    ctx.drawImage(rv, W, 38, W, H);
+    finishPhoto(ctx, canvas, W, H);
+
+    // Send our local frame to partner so they can composite it on their side
+    const localCanvas = document.createElement('canvas');
+    localCanvas.width = W; localCanvas.height = H;
+    const lctx = localCanvas.getContext('2d');
+    lctx.save(); lctx.translate(W, 0); lctx.scale(-1, 1);
+    lctx.drawImage(lv, 0, 0, W, H);
+    lctx.restore();
+    const frameData = localCanvas.toDataURL('image/jpeg', 0.7);
+    if (dataChannel && dataChannel.readyState === 'open') {
+      dataChannel.send(JSON.stringify({ type: 'photo_frame', data: frameData }));
+    }
+  }
+}
+
+function finishPhoto(ctx, canvas, W, H) {
+  // ── Pink divider line between videos ──
+  ctx.strokeStyle = '#ff4d8d';
+  ctx.lineWidth = 2;
+  ctx.shadowBlur = 8; ctx.shadowColor = '#ff4d8d';
+  ctx.beginPath(); ctx.moveTo(W, 38); ctx.lineTo(W, 38 + H);
+  ctx.stroke(); ctx.shadowBlur = 0;
+
+  // ── Labels ──
+  ctx.font = '13px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fillText('YOU', 10, 38 + H - 10);
+  ctx.textAlign = 'right';
+  ctx.fillText('PARTNER', W * 2 - 10, 38 + H - 10);
+
+  // ── Footer timestamp ──
+  const now = new Date();
+  const stamp = now.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
+    + ' · ' + now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(245,200,66,0.6)';
+  ctx.fillText(stamp, W, 38 + H + 24);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillText('pinky-swear.app', W, 38 + H + 42);
+
+  // ── Show modal ──
+  document.getElementById('photo-caption').textContent = stamp;
+  document.getElementById('photo-modal').classList.add('show');
+}
+
+function closePhotoModal() {
+  document.getElementById('photo-modal').classList.remove('show');
+  photoShown = false;
+}
+
+function downloadPhoto() {
+  const canvas = document.getElementById('photo-canvas');
+  const a = document.createElement('a');
+  a.download = `pinky-swear-${Date.now()}.jpg`;
+  a.href = canvas.toDataURL('image/jpeg', 0.92);
+  a.click();
+}
+
+// ─────────────────────────────────────────────────────
 //  BANNER & CONFETTI
 // ─────────────────────────────────────────────────────
 function showBanner() {
@@ -1244,6 +1440,11 @@ function showBanner() {
   bannerShowing = true;
   document.getElementById('pinky-banner').classList.add('show');
   launchConfetti();
+  // Capture the moment after a short dramatic pause
+  if (!photoShown) {
+    photoShown = true;
+    setTimeout(() => captureAndShowPhoto(), 800);
+  }
 }
 
 function hideBanner() {
@@ -1279,6 +1480,8 @@ document.addEventListener('DOMContentLoaded', () => {
   onTap(document.getElementById('btn-initiator'), () => selectRole('initiator'));
   onTap(document.getElementById('btn-joiner'),    () => selectRole('joiner'));
   onTap(document.getElementById('role-next-btn'), () => { if (!document.getElementById('role-next-btn').disabled) proceedFromRole(); });
+  onTap(document.getElementById('photo-download-btn'), downloadPhoto);
+  onTap(document.getElementById('photo-close-btn'), closePhotoModal);
 });
 </script>
 </body>
