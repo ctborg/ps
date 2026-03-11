@@ -922,11 +922,7 @@ const ICE_SERVERS = {
   ]
 };
 
-// ─────────────────────────────────────────────────────
-//  SIGNALING — Cloud Run + Firestore
-//  Replace this URL after deploying the backend
-// ─────────────────────────────────────────────────────
-const SIGNAL_URL = 'https://pinky-signal-143781468769.us-central1.run.app';
+const SIGNAL_URL = 'https://pinky-signal-wazbgraajq-uc.a.run.app';
 
 async function apiPost(path, body) {
   const r = await fetch(SIGNAL_URL + path, {
