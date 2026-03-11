@@ -763,11 +763,7 @@ const ICE_SERVERS = {
   ]
 };
 
-// ─────────────────────────────────────────────────────
-//  SIGNALING — Cloud Run + Firestore
-//  Replace this URL after deploying the backend
-// ─────────────────────────────────────────────────────
-const SIGNAL_URL = 'YOUR_CLOUD_RUN_URL'; // e.g. https://pinky-signal-xxxx-uc.a.run.app
+const SIGNAL_URL = 'https://pinky-signal-143781468769.us-central1.run.app';
 
 async function apiPost(path, body) {
   const r = await fetch(SIGNAL_URL + path, {
@@ -785,15 +781,19 @@ async function apiGet(path) {
   return r.json();
 }
 
-// Poll until condition(data) is true, with exponential back-off up to 3s
-async function pollUntil(path, condition, timeoutMs = 120_000) {
+// Long-poll for answer — retries on 202 (server timed out its own wait window),
+// gives up after totalTimeoutMs. Each retry = 1 Firestore read, not one per second.
+async function waitForAnswer(roomCode, totalTimeoutMs = 120_000) {
   const start = Date.now();
-  let delay = 1000;
-  while (Date.now() - start < timeoutMs) {
-    const data = await apiGet(path);
-    if (condition(data)) return data;
-    await new Promise(r => setTimeout(r, delay));
-    delay = Math.min(delay * 1.5, 3000);
+  while (Date.now() - start < totalTimeoutMs) {
+    const r = await fetch(SIGNAL_URL + `/wait/${roomCode}`);
+    if (r.status === 200) {
+      const data = await r.json();
+      return data.answer;
+    }
+    if (r.status === 202) continue; // server hit its window, retry immediately
+    const text = await r.text();
+    throw new Error(`/wait/${roomCode} → ${r.status}: ${text}`);
   }
   throw new Error('Timed out waiting for partner');
 }
@@ -996,12 +996,13 @@ async function startInitiator() {
   document.getElementById('room-code-display').textContent = roomCode;
   show('init-codes');
 
-  // Poll for partner's answer
-  setLoadingMsg('init-loading-msg', 'Waiting for partner…');
+  // Long-poll for partner's answer — 1 Firestore read per retry window, not per second
   try {
-    const data = await pollUntil(`/poll/${roomCode}`, d => d.answer);
-    await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(data.answer)));
+    const answerSdp = await waitForAnswer(roomCode);
+    await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(answerSdp)));
     hide('init-waiting');
+    // Clean up the room doc now that both sides have what they need
+    fetch(SIGNAL_URL + `/room/${roomCode}`, { method: 'DELETE' }).catch(() => {});
   } catch(e) {
     alert('Partner did not join in time, or an error occurred: ' + e.message);
   }
@@ -1029,7 +1030,7 @@ async function startJoiner() {
   // Fetch offer from server
   let offerSdp;
   try {
-    const data = await apiGet(`/poll/${rawCode}`);
+    const data = await apiGet(`/offer/${rawCode}`);
     if (!data.offer) throw new Error('Room has no offer yet');
     offerSdp = JSON.parse(data.offer);
   } catch(e) {
