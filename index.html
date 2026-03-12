@@ -344,7 +344,7 @@
       <div class="panel-sub">Step 2 — Enter the room code</div>
       <div id="joiner-input">
         <label>Enter Room Code from partner</label>
-        <input type="text" id="room-code-input" placeholder="e.g. HAPPY-PANDA-4821"
+        <input type="text" id="room-code-input" placeholder="HAPPY-PANDA-4821"
           style="text-transform:uppercase;letter-spacing:0.1em;font-size:1rem;text-align:center;"
           oninput="this.value=this.value.toUpperCase()" />
         <div class="btn-row">
@@ -946,8 +946,8 @@ function captureAndShowPhoto(remoteFrameDataUrl=null) {
 function closePhotoModal() { document.getElementById('photo-modal').classList.remove('show'); photoShown=false; }
 
 async function downloadPhoto() {
-  // Render at 2× for crisp saved image
-  const SC = 2;
+  // Render at 3× for crisp saved image
+  const SC = 3;
   const lv=document.getElementById('local-video');
   const rv=document.getElementById('remote-video');
   const now=new Date();
@@ -964,11 +964,14 @@ async function downloadPhoto() {
   const W=(yc.width+pc.width)*1.1, H=Math.max(yc.height,pc.height)*1.25;
   const c=document.createElement('canvas'); c.width=W; c.height=H;
   const ctx=c.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   const g=ctx.createRadialGradient(W/2,H/2,40,W/2,H/2,W*0.8);
   g.addColorStop(0,'#2d0f3e'); g.addColorStop(1,'#0e0518');
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-  ctx.save(); ctx.translate(W*0.28,H*0.48); ctx.rotate(-5*Math.PI/180); ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20*SC; ctx.drawImage(yc,-yc.width/2,-yc.height/2); ctx.restore();
-  ctx.save(); ctx.translate(W*0.72,H*0.48); ctx.rotate(4*Math.PI/180);  ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20*SC; ctx.drawImage(pc,-pc.width/2,-pc.height/2); ctx.restore();
+  const PAD_C = 4 * SC; // padding around each card to allow antialiased edges
+  ctx.save(); ctx.translate(W*0.28,H*0.48); ctx.rotate(-5*Math.PI/180); ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20*SC; ctx.drawImage(yc,-(yc.width/2+PAD_C),-(yc.height/2+PAD_C),yc.width+PAD_C*2,yc.height+PAD_C*2); ctx.restore();
+  ctx.save(); ctx.translate(W*0.72,H*0.48); ctx.rotate(4*Math.PI/180);  ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20*SC; ctx.drawImage(pc,-(pc.width/2+PAD_C),-(pc.height/2+PAD_C),pc.width+PAD_C*2,pc.height+PAD_C*2); ctx.restore();
   ctx.font=`bold ${14*SC}px "DM Mono",monospace`; ctx.textAlign='center'; ctx.fillStyle='#ff4d8d'; ctx.globalAlpha=0.9;
   ctx.fillText('🤙  P I N K Y  S W E A R  🤙',W/2,H-16*SC);
 
