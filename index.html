@@ -4,76 +4,46 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Pinky Swear 🤙</title>
-
-<!-- PWA / Home Screen meta -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Pinky Swear">
 <meta name="theme-color" content="#1a0a2e">
-
-<!-- Icons injected by JS below -->
 <link id="favicon" rel="icon" type="image/png">
 <link id="apple-touch-icon" rel="apple-touch-icon">
 
 <script>
-// ── Generate favicon + app icon from canvas ───────────────────────────────
 (function() {
   function makeIcon(size) {
-    const c   = document.createElement('canvas');
-    c.width   = size;
-    c.height  = size;
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
     const ctx = c.getContext('2d');
-    const s   = size;
-    const r   = s * 0.22;
+    const s = size, r = s * 0.22;
     const grad = ctx.createLinearGradient(0, 0, s, s);
     grad.addColorStop(0, '#2d0f3e');
     grad.addColorStop(1, '#1a0a2e');
     ctx.beginPath();
-    ctx.moveTo(r, 0);
-    ctx.lineTo(s - r, 0);
-    ctx.quadraticCurveTo(s, 0, s, r);
-    ctx.lineTo(s, s - r);
-    ctx.quadraticCurveTo(s, s, s - r, s);
-    ctx.lineTo(r, s);
-    ctx.quadraticCurveTo(0, s, 0, s - r);
-    ctx.lineTo(0, r);
-    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.moveTo(r,0); ctx.lineTo(s-r,0); ctx.quadraticCurveTo(s,0,s,r);
+    ctx.lineTo(s,s-r); ctx.quadraticCurveTo(s,s,s-r,s);
+    ctx.lineTo(r,s); ctx.quadraticCurveTo(0,s,0,s-r);
+    ctx.lineTo(0,r); ctx.quadraticCurveTo(0,0,r,0);
     ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
-    ctx.shadowColor = '#ff4d8d';
-    ctx.shadowBlur  = s * 0.12;
-    const em = s * 0.52;
-    ctx.font = `${em}px serif`;
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.save();
-    ctx.translate(s * 0.38, s * 0.52);
-    ctx.rotate(-0.35);
-    ctx.fillText('🤙', 0, 0);
-    ctx.restore();
-    ctx.save();
-    ctx.translate(s * 0.62, s * 0.52);
-    ctx.scale(-1, 1);
-    ctx.rotate(-0.35);
-    ctx.fillText('🤙', 0, 0);
-    ctx.restore();
+    ctx.fillStyle = grad; ctx.fill();
+    ctx.shadowColor = '#ff4d8d'; ctx.shadowBlur = s * 0.12;
+    ctx.font = `${s*0.52}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.save(); ctx.translate(s*0.38,s*0.52); ctx.rotate(-0.35); ctx.fillText('🤙',0,0); ctx.restore();
+    ctx.save(); ctx.translate(s*0.62,s*0.52); ctx.scale(-1,1); ctx.rotate(-0.35); ctx.fillText('🤙',0,0); ctx.restore();
     ctx.shadowBlur = 0;
     if (size >= 120) {
-      ctx.beginPath();
-      ctx.arc(s * 0.5, s * 0.88, s * 0.04, 0, Math.PI * 2);
-      ctx.fillStyle = '#ff4d8d';
-      ctx.shadowColor = '#ff4d8d';
-      ctx.shadowBlur = s * 0.06;
-      ctx.fill();
-      ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.arc(s*0.5,s*0.88,s*0.04,0,Math.PI*2);
+      ctx.fillStyle='#ff4d8d'; ctx.shadowColor='#ff4d8d'; ctx.shadowBlur=s*0.06; ctx.fill(); ctx.shadowBlur=0;
     }
     return c.toDataURL('image/png');
   }
-  document.getElementById('favicon').href          = makeIcon(64);
+  document.getElementById('favicon').href = makeIcon(64);
   document.getElementById('apple-touch-icon').href = makeIcon(180);
 })();
 </script>
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Abril+Fatface&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -98,576 +68,154 @@
 
   body::before {
     content: '';
-    position: fixed;
-    inset: 0;
+    position: fixed; inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 9999;
-    opacity: 0.4;
+    pointer-events: none; z-index: 9999; opacity: 0.4;
   }
 
-  header {
-    text-align: center;
-    padding: 2rem 1rem 1rem;
-    position: relative;
-  }
-
+  header { text-align: center; padding: 2rem 1rem 1rem; }
   header h1 {
     font-family: 'Abril Fatface', serif;
     font-size: clamp(2.5rem, 8vw, 5rem);
-    color: var(--paper);
-    letter-spacing: -0.02em;
-    line-height: 1;
+    color: var(--paper); letter-spacing: -0.02em; line-height: 1;
   }
-
   header h1 span { color: var(--pink); }
+  header p { color: var(--dim); font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; margin-top: 0.5rem; }
 
-  header p {
-    color: var(--dim);
-    font-size: 0.75rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    margin-top: 0.5rem;
-  }
+  .steps { display: flex; justify-content: center; padding: 1.5rem 1rem 0; max-width: 600px; margin: 0 auto; }
 
-  .steps {
-    display: flex;
-    justify-content: center;
-    gap: 0;
-    padding: 1.5rem 1rem 0;
-    max-width: 600px;
-    margin: 0 auto;
-  }
-
-  .step-item {
-    flex: 1;
-    text-align: center;
-    position: relative;
-  }
-
-  .step-item::after {
-    content: '';
-    position: absolute;
-    top: 14px;
-    left: 50%;
-    width: 100%;
-    height: 2px;
-    background: #2d1e4a;
-    z-index: 0;
-  }
-
+  .step-item { flex: 1; text-align: center; position: relative; }
+  .step-item::after { content: ''; position: absolute; top: 14px; left: 50%; width: 100%; height: 2px; background: #2d1e4a; z-index: 0; }
   .step-item:last-child::after { display: none; }
 
   .step-dot {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    border: 2px solid #2d1e4a;
-    background: var(--ink);
-    margin: 0 auto 0.4rem;
+    width: 28px; height: 28px; border-radius: 50%; border: 2px solid #2d1e4a;
+    background: var(--ink); margin: 0 auto 0.4rem;
     display: flex; align-items: center; justify-content: center;
-    font-size: 0.65rem;
-    font-weight: 500;
-    position: relative;
-    z-index: 1;
-    transition: all 0.3s;
-    color: var(--dim);
+    font-size: 0.65rem; font-weight: 500; position: relative; z-index: 1;
+    transition: all 0.3s; color: var(--dim);
   }
+  .step-dot.active { border-color: var(--pink); background: var(--pink); color: white; box-shadow: 0 0 16px rgba(255,77,141,0.5); }
+  .step-dot.done   { border-color: var(--mint);  background: var(--mint);  color: var(--ink); }
+  .step-label { font-size: 0.6rem; letter-spacing: 0.08em; color: var(--dim); text-transform: uppercase; }
 
-  .step-dot.active {
-    border-color: var(--pink);
-    background: var(--pink);
-    color: white;
-    box-shadow: 0 0 16px rgba(255,77,141,0.5);
-  }
-
-  .step-dot.done {
-    border-color: var(--mint);
-    background: var(--mint);
-    color: var(--ink);
-  }
-
-  .step-label {
-    font-size: 0.6rem;
-    letter-spacing: 0.08em;
-    color: var(--dim);
-    text-transform: uppercase;
-  }
-
-  .step-item.active .step-label { color: var(--paper); }
-
-  main {
-    max-width: 700px;
-    margin: 0 auto;
-    padding: 1.5rem 1rem 4rem;
-  }
+  main { max-width: 700px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
 
   .panel {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 16px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-    display: none;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem; display: none;
   }
-
   .panel.active { display: block; animation: fadeUp 0.4s ease; }
 
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
 
-  .panel-title {
-    font-family: 'Abril Fatface', serif;
-    font-size: 1.3rem;
-    color: var(--gold);
-    margin-bottom: 0.3rem;
-  }
+  .panel-title { font-family: 'Abril Fatface', serif; font-size: 1.3rem; color: var(--gold); margin-bottom: 0.3rem; }
+  .panel-sub { font-size: 0.7rem; color: var(--dim); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1.2rem; }
 
-  .panel-sub {
-    font-size: 0.7rem;
-    color: var(--dim);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 1.2rem;
-  }
-
-  .role-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-
+  .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
   .role-btn {
-    background: none;
-    border: 2px solid rgba(255,255,255,0.1);
-    border-radius: 12px;
-    padding: 1.5rem 1rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: center;
-    color: var(--paper);
-    font-family: 'DM Mono', monospace;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    user-select: none;
-    -webkit-user-select: none;
+    background: none; border: 2px solid rgba(255,255,255,0.1); border-radius: 12px;
+    padding: 1.5rem 1rem; cursor: pointer; transition: all 0.2s;
+    text-align: center; color: var(--paper); font-family: 'DM Mono', monospace;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    user-select: none; -webkit-user-select: none;
   }
-
-  .role-btn:hover { border-color: var(--pink); background: rgba(255,77,141,0.06); }
+  .role-btn:hover    { border-color: var(--pink); background: rgba(255,77,141,0.06); }
   .role-btn.selected { border-color: var(--pink); background: rgba(255,77,141,0.1); box-shadow: 0 0 24px rgba(255,77,141,0.15); }
   .role-btn * { pointer-events: none; }
-
   .role-emoji { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
-  .role-name { font-size: 0.9rem; font-weight: 500; display: block; }
-  .role-desc { font-size: 0.65rem; color: var(--dim); display: block; margin-top: 0.3rem; }
+  .role-name  { font-size: 0.9rem; font-weight: 500; display: block; }
+  .role-desc  { font-size: 0.65rem; color: var(--dim); display: block; margin-top: 0.3rem; }
 
-  textarea, input {
-    width: 100%;
-    background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 8px;
-    color: var(--paper);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.72rem;
-    padding: 0.75rem 1rem;
-    resize: vertical;
-    outline: none;
-    transition: border-color 0.2s;
-    letter-spacing: 0.02em;
+  input {
+    width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; color: var(--paper); font-family: 'DM Mono', monospace;
+    font-size: 0.72rem; padding: 0.75rem 1rem; outline: none;
+    transition: border-color 0.2s; letter-spacing: 0.02em;
   }
+  input:focus { border-color: var(--pink); }
 
-  textarea:focus, input:focus { border-color: var(--pink); }
-  textarea { min-height: 90px; }
-
-  label {
-    display: block;
-    font-size: 0.65rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--dim);
-    margin-bottom: 0.4rem;
-    margin-top: 0.9rem;
-  }
+  label { display: block; font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); margin-bottom: 0.4rem; margin-top: 0.9rem; }
 
   .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 8px;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.78rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    letter-spacing: 0.05em;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
-    -webkit-user-select: none;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 1.5rem; border: none; border-radius: 8px;
+    font-family: 'DM Mono', monospace; font-size: 0.78rem; font-weight: 500;
+    cursor: pointer; transition: all 0.2s; letter-spacing: 0.05em;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    user-select: none; -webkit-user-select: none;
   }
-
-  .btn-primary {
-    background: var(--pink);
-    color: white;
-    box-shadow: 0 4px 20px rgba(255,77,141,0.3);
-  }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(255,77,141,0.45); }
+  .btn-primary { background: var(--pink); color: white; box-shadow: 0 4px 20px rgba(255,77,141,0.3); }
+  .btn-primary:hover  { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(255,77,141,0.45); }
   .btn-primary:active { transform: translateY(0); }
-
-  .btn-secondary {
-    background: rgba(255,255,255,0.06);
-    color: var(--paper);
-    border: 1px solid rgba(255,255,255,0.1);
-  }
-  .btn-secondary:hover { background: rgba(255,255,255,0.1); }
-
-  .btn-ghost {
-    background: none;
-    color: var(--dim);
-    border: 1px solid rgba(255,255,255,0.08);
-    font-size: 0.68rem;
-  }
+  .btn-ghost { background: none; color: var(--dim); border: 1px solid rgba(255,255,255,0.08); font-size: 0.68rem; }
   .btn-ghost:hover { color: var(--paper); border-color: rgba(255,255,255,0.2); }
-
-  .btn-row {
-    display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap;
-    align-items: center;
-  }
-
+  .btn-row { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; align-items: center; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
 
   .status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.3rem 0.75rem;
-    border-radius: 999px;
-    font-size: 0.65rem;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.3rem 0.75rem; border-radius: 999px;
+    font-size: 0.65rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
   }
-
-  .status-badge .dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-  }
-
-  .status-waiting { background: rgba(245,200,66,0.1); color: var(--gold); border: 1px solid rgba(245,200,66,0.2); }
+  .status-badge .dot { width: 6px; height: 6px; border-radius: 50%; animation: pulse 2s infinite; }
+  .status-waiting   { background: rgba(245,200,66,0.1); color: var(--gold); border: 1px solid rgba(245,200,66,0.2); }
   .status-waiting .dot { background: var(--gold); }
-  .status-connected { background: rgba(61,255,160,0.1); color: var(--mint); border: 1px solid rgba(61,255,160,0.2); }
+  .status-connected { background: rgba(61,255,160,0.1);  color: var(--mint); border: 1px solid rgba(61,255,160,0.2); }
   .status-connected .dot { background: var(--mint); }
-  .status-error { background: rgba(255,100,100,0.1); color: #ff6464; border: 1px solid rgba(255,100,100,0.2); }
-  .status-error .dot { background: #ff6464; animation: none; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
 
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
-  .video-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-
-  .video-wrap {
-    position: relative;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #0d0717;
-    aspect-ratio: 4/3;
-    border: 1px solid rgba(255,255,255,0.08);
-  }
-
-  .video-wrap video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
-  #local-video, #local-canvas {
-    transform: scaleX(-1);
-  }
-
-  .video-wrap canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  .video-label {
-    position: absolute;
-    bottom: 0.5rem;
-    left: 0.5rem;
-    background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(4px);
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.6rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--paper);
-  }
-
-  .pinky-indicator {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    font-size: 1.2rem;
-    opacity: 0.2;
-    transition: opacity 0.3s;
-  }
-  .pinky-indicator.active { opacity: 1; filter: drop-shadow(0 0 8px var(--pink)); }
-
-  #pinky-banner {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s;
-    background: rgba(10, 3, 22, 0.82);
-    backdrop-filter: blur(6px);
-  }
-
-  #pinky-banner.show { opacity: 1; pointer-events: all; }
-
-  .banner-text {
-    font-family: 'Abril Fatface', serif;
-    font-size: clamp(3rem, 14vw, 9rem);
-    color: var(--paper);
-    text-align: center;
-    line-height: 1;
-    animation: bannerPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-    text-shadow: 0 0 80px rgba(255,77,141,0.6), 0 0 30px rgba(255,77,141,0.3);
-  }
-
-  .banner-text span { color: var(--pink); }
-
-  .banner-emoji {
-    font-size: clamp(3rem, 12vw, 7rem);
-    animation: bounce 0.6s ease infinite alternate;
-    margin-top: 1rem;
-  }
-
-  .banner-sub {
-    font-size: clamp(0.7rem, 2vw, 1rem);
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--dim);
-    margin-top: 1.5rem;
-    animation: fadeIn 0.5s ease 0.3s both;
-  }
-
-  @keyframes bannerPop {
-    from { transform: scale(0.5); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-  }
-
-  @keyframes bounce {
-    from { transform: translateY(0) rotate(-10deg); }
-    to { transform: translateY(-12px) rotate(10deg); }
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; } to { opacity: 1; }
-  }
-
-  .confetti-particle {
-    position: fixed;
-    width: 8px; height: 8px;
-    border-radius: 2px;
-    pointer-events: none;
-    z-index: 1001;
-    animation: confettiFall linear forwards;
-  }
-
-  @keyframes confettiFall {
-    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
-    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-  }
-
-  #photo-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(10,3,22,0.92);
-    backdrop-filter: blur(8px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s;
-  }
-  #photo-modal.show { opacity: 1; pointer-events: all; }
-
-  .photo-card {
-    background: var(--paper);
-    border-radius: 4px;
-    padding: 1.2rem 1.2rem 2rem;
-    box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
-    max-width: min(92vw, 640px);
-    width: 100%;
-    animation: photoReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-    position: relative;
-  }
-
-  @keyframes photoReveal {
-    from { transform: scale(0.85) rotate(-2deg); opacity: 0; }
-    to   { transform: scale(1) rotate(0deg); opacity: 1; }
-  }
-
-  #photo-canvas {
-    width: 100%;
-    border-radius: 2px;
-    display: block;
-  }
-
-  .photo-caption {
-    text-align: center;
-    margin-top: 1rem;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--ink);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    opacity: 0.5;
-  }
-
-  .photo-actions {
-    display: flex;
-    gap: 0.75rem;
-    justify-content: center;
-    margin-top: 1.2rem;
-  }
-
-  .photo-actions .btn {
-    font-size: 0.72rem;
-    padding: 0.6rem 1.2rem;
-  }
-
-  .tip {
-    background: rgba(245,200,66,0.06);
-    border: 1px solid rgba(245,200,66,0.15);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    font-size: 0.68rem;
-    color: #c9a832;
-    line-height: 1.6;
-    margin-top: 1rem;
-  }
-
+  .tip { background: rgba(245,200,66,0.06); border: 1px solid rgba(245,200,66,0.15); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.68rem; color: #c9a832; line-height: 1.6; margin-top: 1rem; }
   .tip strong { color: var(--gold); }
 
-  .copy-pill {
-    display: flex;
-    align-items: stretch;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 8px;
-    overflow: hidden;
-    margin-top: 0.5rem;
-  }
+  hr.divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 1.2rem 0; }
 
-  .copy-pill pre {
-    flex: 1;
-    padding: 0.6rem 0.8rem;
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--mint);
-    background: rgba(0,0,0,0.25);
-    overflow-x: auto;
-    white-space: nowrap;
-  }
+  .connected-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
 
-  .copy-pill button {
-    padding: 0 1rem;
-    background: rgba(61,255,160,0.1);
-    border: none;
-    color: var(--mint);
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    cursor: pointer;
-    border-left: 1px solid rgba(255,255,255,0.08);
-    letter-spacing: 0.08em;
-    transition: background 0.2s;
-    flex-shrink: 0;
-  }
+  .spinner { width: 32px; height: 32px; border: 2px solid rgba(255,255,255,0.1); border-top-color: var(--pink); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-  .copy-pill button:hover { background: rgba(61,255,160,0.2); }
-
-  .detection-bar {
-    display: flex;
-    gap: 1rem;
-    padding: 0.75rem 1rem;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 10px;
-    margin-bottom: 0.75rem;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .detection-item {
-    display: flex; align-items: center; gap: 0.4rem;
-    font-size: 0.68rem;
-    color: var(--dim);
-  }
-
-  .detection-item .led {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: #2d1e4a;
-    transition: all 0.3s;
-    flex-shrink: 0;
-  }
-
+  .detection-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; margin-bottom: 0.75rem; }
+  .detection-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.68rem; color: var(--dim); }
+  .detection-item .led { width: 8px; height: 8px; border-radius: 50%; background: #2d1e4a; transition: all 0.3s; flex-shrink: 0; }
   .detection-item.on .led { background: var(--mint); box-shadow: 0 0 8px var(--mint); }
   .detection-item.on { color: var(--paper); }
 
-  hr.divider {
-    border: none;
-    border-top: 1px solid rgba(255,255,255,0.06);
-    margin: 1.2rem 0;
-  }
+  .video-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; }
+  .video-wrap { position: relative; border-radius: 12px; overflow: hidden; background: #0d0717; aspect-ratio: 4/3; border: 1px solid rgba(255,255,255,0.08); }
+  .video-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #local-video, #local-canvas { transform: scaleX(-1); }
+  .video-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .video-label { position: absolute; bottom: 0.5rem; left: 0.5rem; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; }
+  .pinky-indicator { position: absolute; top: 0.5rem; right: 0.5rem; font-size: 1.2rem; opacity: 0.2; transition: opacity 0.3s; }
+  .pinky-indicator.active { opacity: 1; filter: drop-shadow(0 0 8px var(--pink)); }
 
-  .connected-header {
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; gap: 0.5rem;
-    margin-bottom: 1rem;
+  #pinky-banner {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; z-index: 1000;
+    pointer-events: none; opacity: 0; transition: opacity 0.3s;
+    background: rgba(10,3,22,0.82); backdrop-filter: blur(6px);
   }
+  #pinky-banner.show { opacity: 1; pointer-events: all; }
+  .banner-text { font-family: 'Abril Fatface', serif; font-size: clamp(3rem,14vw,9rem); color: var(--paper); text-align: center; line-height: 1; animation: bannerPop 0.5s cubic-bezier(0.34,1.56,0.64,1); text-shadow: 0 0 80px rgba(255,77,141,0.6), 0 0 30px rgba(255,77,141,0.3); }
+  .banner-text span { color: var(--pink); }
+  .banner-emoji { font-size: clamp(3rem,12vw,7rem); animation: bounce 0.6s ease infinite alternate; margin-top: 1rem; }
+  .banner-sub { font-size: clamp(0.7rem,2vw,1rem); letter-spacing: 0.3em; text-transform: uppercase; color: var(--dim); margin-top: 1.5rem; animation: fadeIn 0.5s ease 0.3s both; }
+  @keyframes bannerPop { from { transform:scale(0.5); opacity:0; } to { transform:scale(1); opacity:1; } }
+  @keyframes bounce    { from { transform:translateY(0) rotate(-10deg); } to { transform:translateY(-12px) rotate(10deg); } }
+  @keyframes fadeIn    { from { opacity:0; } to { opacity:1; } }
 
-  #loading-mediapipe {
-    text-align: center;
-    padding: 2rem;
-    color: var(--dim);
-    font-size: 0.75rem;
-  }
+  .confetti-particle { position: fixed; width: 8px; height: 8px; border-radius: 2px; pointer-events: none; z-index: 1001; animation: confettiFall linear forwards; }
+  @keyframes confettiFall { 0% { transform:translateY(-20px) rotate(0deg); opacity:1; } 100% { transform:translateY(100vh) rotate(720deg); opacity:0; } }
 
-  .spinner {
-    width: 32px; height: 32px;
-    border: 2px solid rgba(255,255,255,0.1);
-    border-top-color: var(--pink);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 1rem;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
+  #photo-modal { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: rgba(10,3,22,0.92); backdrop-filter: blur(8px); opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+  #photo-modal.show { opacity: 1; pointer-events: all; }
+  .photo-card { background: var(--paper); border-radius: 4px; padding: 1.2rem 1.2rem 2rem; box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05); max-width: min(92vw,640px); width: 100%; animation: photoReveal 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes photoReveal { from { transform:scale(0.85) rotate(-2deg); opacity:0; } to { transform:scale(1) rotate(0deg); opacity:1; } }
+  #photo-canvas { width: 100%; border-radius: 2px; display: block; }
+  .photo-caption { text-align: center; margin-top: 1rem; font-size: 0.7rem; color: var(--ink); letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.5; }
+  .photo-actions { display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.2rem; }
+  .photo-actions .btn { font-size: 0.72rem; padding: 0.6rem 1.2rem; }
 </style>
 </head>
 <body>
@@ -677,24 +225,14 @@
   <p>peer-to-peer · no server · real-time hand detection</p>
 </header>
 
-<div class="steps" id="steps-bar">
-  <div class="step-item" id="s1">
-    <div class="step-dot active" id="sd1">1</div>
-    <div class="step-label">Setup</div>
-  </div>
-  <div class="step-item" id="s2">
-    <div class="step-dot" id="sd2">2</div>
-    <div class="step-label">Connect</div>
-  </div>
-  <div class="step-item" id="s3">
-    <div class="step-dot" id="sd3">3</div>
-    <div class="step-label">Swear</div>
-  </div>
+<div class="steps">
+  <div class="step-item"><div class="step-dot active" id="sd1">1</div><div class="step-label">Setup</div></div>
+  <div class="step-item"><div class="step-dot" id="sd2">2</div><div class="step-label">Connect</div></div>
+  <div class="step-item"><div class="step-dot" id="sd3">3</div><div class="step-label">Swear</div></div>
 </div>
 
 <main>
 
-  <!-- Step 1: Choose role -->
   <div class="panel active" id="panel-role">
     <div class="panel-title">Who are you?</div>
     <div class="panel-sub">Choose your role in this pinky swear</div>
@@ -715,75 +253,50 @@
     </div>
   </div>
 
-  <!-- Single unified panel for everything after role selection -->
   <div class="panel" id="panel-main">
 
-    <!-- ── INITIATOR UI ── -->
+    <!-- INITIATOR -->
     <div id="ui-initiator" style="display:none">
       <div class="panel-title">Initiator</div>
       <div class="panel-sub">Step 2 — Start the connection</div>
-
       <div id="init-pregame">
-        <p style="font-size:0.78rem; color:var(--dim); line-height:1.7; margin-bottom:1rem;">
-          Click below to start your camera and generate a Room Code. Share the code with your partner.
-        </p>
+        <p style="font-size:0.78rem;color:var(--dim);line-height:1.7;margin-bottom:1rem;">Click below to start your camera and generate a Room Code. Share the code with your partner.</p>
         <button class="btn btn-primary" onclick="startInitiator()">📡 Create Room</button>
       </div>
-
-      <div id="init-loading" style="display:none; text-align:center; padding:1.5rem 0;">
+      <div id="init-loading" style="display:none;text-align:center;padding:1.5rem 0;">
         <div class="spinner"></div>
-        <div id="init-loading-msg" style="font-size:0.75rem; color:var(--dim);">Starting camera…</div>
+        <div id="init-loading-msg" style="font-size:0.75rem;color:var(--dim);">Starting camera…</div>
       </div>
-
       <div id="init-codes" style="display:none">
-        <label>① Your Room Code — share with partner</label>
-        <div style="display:flex; align-items:center; gap:0.75rem; margin-top:0.5rem; flex-wrap:wrap;">
-          <div id="room-code-display" style="
-            font-family:'Abril Fatface',serif;
-            font-size:clamp(1.4rem,5vw,2rem);
-            color:var(--gold);
-            letter-spacing:0.05em;
-            background:rgba(245,200,66,0.08);
-            border:1px solid rgba(245,200,66,0.2);
-            border-radius:10px;
-            padding:0.6rem 1.2rem;
-            flex:1; text-align:center;
-          "></div>
+        <label>Your Room Code — share with partner</label>
+        <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.5rem;flex-wrap:wrap;">
+          <div id="room-code-display" style="font-family:'Abril Fatface',serif;font-size:clamp(1.4rem,5vw,2rem);color:var(--gold);letter-spacing:0.05em;background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,0.2);border-radius:10px;padding:0.6rem 1.2rem;flex:1;text-align:center;"></div>
           <button class="btn btn-ghost" onclick="copyRoomCode(this)" style="flex-shrink:0">COPY</button>
         </div>
-
-        <div class="tip" style="margin-top:0.75rem;">
-          <strong>📋 Waiting</strong> for your partner to enter this code and join…
-        </div>
-
+        <div class="tip" style="margin-top:0.75rem;"><strong>📋 Waiting</strong> for your partner to enter this code and join…</div>
         <div id="init-waiting" style="margin-top:1rem;">
           <span class="status-badge status-waiting"><span class="dot"></span>Waiting for partner…</span>
         </div>
       </div>
     </div>
 
-    <!-- ── JOINER UI ── -->
+    <!-- JOINER -->
     <div id="ui-joiner" style="display:none">
       <div class="panel-title">Joiner</div>
       <div class="panel-sub">Step 2 — Enter the room code</div>
-
       <div id="joiner-input">
-        <label>① Enter Room Code from partner</label>
-        <input type="text" id="room-code-input"
-          placeholder="e.g. HAPPY-PANDA-4821"
-          style="text-transform:uppercase; letter-spacing:0.1em; font-size:1rem; text-align:center;"
-          oninput="this.value=this.value.toUpperCase()"
-        />
+        <label>Enter Room Code from partner</label>
+        <input type="text" id="room-code-input" placeholder="e.g. HAPPY-PANDA-4821"
+          style="text-transform:uppercase;letter-spacing:0.1em;font-size:1rem;text-align:center;"
+          oninput="this.value=this.value.toUpperCase()" />
         <div class="btn-row">
           <button class="btn btn-primary" onclick="startJoiner()">🔗 Join Room</button>
         </div>
       </div>
-
-      <div id="joiner-loading" style="display:none; text-align:center; padding:1.5rem 0;">
+      <div id="joiner-loading" style="display:none;text-align:center;padding:1.5rem 0;">
         <div class="spinner"></div>
-        <div id="joiner-loading-msg" style="font-size:0.75rem; color:var(--dim);">Connecting…</div>
+        <div id="joiner-loading-msg" style="font-size:0.75rem;color:var(--dim);">Connecting…</div>
       </div>
-
       <div id="joiner-codes" style="display:none">
         <div style="margin-top:1rem">
           <span class="status-badge status-waiting" id="waiting-badge"><span class="dot"></span>Finalising connection…</span>
@@ -791,7 +304,7 @@
       </div>
     </div>
 
-    <!-- ── VIDEO (revealed on connection) ── -->
+    <!-- VIDEO -->
     <div id="section-video" style="display:none">
       <hr class="divider">
       <div class="connected-header">
@@ -799,13 +312,11 @@
         <span class="status-badge status-connected"><span class="dot"></span>Live</span>
       </div>
       <div class="panel-sub" style="margin-bottom:0.75rem;">Raise your pinky finger 🤙 to the camera</div>
-
       <div class="detection-bar">
         <div class="detection-item" id="det-local"><div class="led"></div><span>Your pinky</span></div>
         <div class="detection-item" id="det-remote"><div class="led"></div><span>Partner's pinky</span></div>
-        <div style="margin-left:auto; font-size:0.65rem; color:var(--dim);">raise pinky toward camera</div>
+        <div style="margin-left:auto;font-size:0.65rem;color:var(--dim);">raise pinky toward camera</div>
       </div>
-
       <div class="video-grid">
         <div class="video-wrap">
           <video id="local-video" autoplay muted playsinline></video>
@@ -820,87 +331,49 @@
           <div class="pinky-indicator" id="remote-pinky-icon">🤙</div>
         </div>
       </div>
-
-      <!-- Debug bar -->
-      <div style="margin-top:0.75rem; padding:0.75rem 1rem; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); border-radius:10px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
-          <div style="font-size:0.65rem; color:var(--dim); letter-spacing:0.08em; text-transform:uppercase;">Debug</div>
-          <button class="btn btn-ghost" onclick="refreshVideoSources()" style="font-size:0.65rem; padding:0.4rem 0.9rem;">🔄 Refresh Video Sources</button>
-        </div>
-        <div id="debug-info" style="margin-top:0.5rem; font-size:0.6rem; color:var(--dim); line-height:1.8; font-family:'DM Mono',monospace;"></div>
-      </div>
     </div>
 
-  </div><!-- /panel-main -->
-
+  </div>
 </main>
 
-<!-- THE BANNER -->
 <div id="pinky-banner">
   <div class="banner-text">PINKY<br><span>SWEAR!</span></div>
   <div class="banner-emoji">🤙🤙</div>
   <div class="banner-sub">Your oath has been sealed · forever bound</div>
 </div>
 
-<!-- Photo capture modal -->
 <div id="photo-modal">
   <div class="photo-card">
     <canvas id="photo-canvas"></canvas>
     <div class="photo-caption" id="photo-caption"></div>
     <div class="photo-actions">
-      <button class="btn btn-primary" id="photo-download-btn">⬇ Save Photo</button>
+      <button class="btn btn-primary" id="photo-download-btn">⬆ Share / Save</button>
       <button class="btn btn-ghost" id="photo-close-btn">Close</button>
     </div>
   </div>
 </div>
 
-<!-- MediaPipe CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
 <script>
-// ─────────────────────────────────────────────────────
-//  STATE
-// ─────────────────────────────────────────────────────
-let role = null;
-let pc = null;
-let localStream = null;
-let remoteStream = null;
-let dataChannel = null;
-let localPinkyUp = false;
-let remotePinkyUp = false;
-let bannerShowing = false;
+// ── State ──────────────────────────────────────────────────────────────────
+let role = null, pc = null, localStream = null, remoteStream = null, dataChannel = null;
+let localPinkyUp = false, remotePinkyUp = false, bannerShowing = false, photoShown = false;
 let localPinkyHistory  = Array(6).fill(false);
 let remotePinkyHistory = Array(6).fill(false);
 
-// ── Single shared MediaPipe Hands instance ──────────────────────────────────
-// Using ONE instance avoids the WASM Module collision that happens when two
-// Hands objects load the same simd wasm binary simultaneously.  We time-slice:
-// alternate sends between local and remote video each RAF tick.
-let sharedHands = null;       // the single Hands instance
-let handsRafId  = null;       // the single RAF loop ID
-let handsReady  = false;      // true after first successful init
-let handsSending = false;     // guard against overlapping sends
-let handsLocalVideo  = null;  // reference to local  <video>
-let handsRemoteVideo = null;  // reference to remote <video>
-let handsTurn = 'local';      // which video to process this tick
-
-const ICE_SERVERS = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
-  ]
-};
+// Single shared MediaPipe Hands instance — avoids WASM Module collision
+let sharedHands = null, handsRafId = null, handsSending = false;
+let handsLocalVideo = null, handsRemoteVideo = null, handsTurn = 'local';
 
 const SIGNAL_URL = 'https://pinky-signal-wazbgraajq-uc.a.run.app';
+const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
 
+// ── Signaling ──────────────────────────────────────────────────────────────
 async function apiPost(path, body) {
-  const r = await fetch(SIGNAL_URL + path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const r = await fetch(SIGNAL_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (!r.ok) throw new Error(`${path} → ${r.status}: ${await r.text()}`);
   return r.json();
 }
@@ -915,24 +388,16 @@ async function waitForAnswer(roomCode, totalTimeoutMs = 120_000) {
   const start = Date.now();
   while (Date.now() - start < totalTimeoutMs) {
     const r = await fetch(SIGNAL_URL + `/wait/${roomCode}`);
-    if (r.status === 200) {
-      const data = await r.json();
-      return data.answer;
-    }
+    if (r.status === 200) return (await r.json()).answer;
     if (r.status === 202) continue;
-    const text = await r.text();
-    throw new Error(`/wait/${roomCode} → ${r.status}: ${text}`);
+    throw new Error(`/wait/${roomCode} → ${r.status}: ${await r.text()}`);
   }
   throw new Error('Timed out waiting for partner');
 }
 
-let currentRoomCode = null;
-
-// ─────────────────────────────────────────────────────
-//  UI HELPERS
-// ─────────────────────────────────────────────────────
-function show(id)  { document.getElementById(id).style.display = 'block'; }
-function hide(id)  { document.getElementById(id).style.display = 'none'; }
+// ── UI ─────────────────────────────────────────────────────────────────────
+const show = id => document.getElementById(id).style.display = 'block';
+const hide = id => document.getElementById(id).style.display = 'none';
 
 function selectRole(r) {
   role = r;
@@ -946,22 +411,20 @@ function proceedFromRole() {
   hide('panel-role');
   show('panel-main');
   document.getElementById('panel-main').classList.add('active');
-  if (role === 'initiator') {
-    show('ui-initiator');
-  } else {
-    show('ui-joiner');
-  }
+  show(role === 'initiator' ? 'ui-initiator' : 'ui-joiner');
 }
 
 function setStep(n) {
   for (let i = 1; i <= 3; i++) {
     const dot = document.getElementById('sd' + i);
     dot.classList.remove('active', 'done');
-    if (i < n)      { dot.classList.add('done');   dot.textContent = '✓'; }
-    else if (i === n){ dot.classList.add('active'); dot.textContent = i; }
-    else              { dot.textContent = i; }
+    if (i < n)        { dot.classList.add('done');   dot.textContent = '✓'; }
+    else if (i === n) { dot.classList.add('active'); dot.textContent = i;   }
+    else                { dot.textContent = i; }
   }
 }
+
+function setMsg(id, msg) { const el = document.getElementById(id); if (el) el.textContent = msg; }
 
 let connectedOnce = false;
 function showConnected() {
@@ -971,92 +434,29 @@ function showConnected() {
   hide('waiting-badge');
   show('section-video');
   document.getElementById('section-video').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  setTimeout(() => refreshVideoSources(true), 300);
+  setTimeout(() => refreshVideoSources(), 300);
 }
 
-function updateDebugInfo() {
-  const lv = document.getElementById('local-video');
-  const rv = document.getElementById('remote-video');
-  const lines = [
-    `localStream: ${localStream ? localStream.getTracks().map(t => t.kind + '/' + t.readyState).join(', ') : 'null'}`,
-    `remoteStream: ${remoteStream ? remoteStream.getTracks().map(t => t.kind + '/' + t.readyState).join(', ') : 'null'}`,
-    `local-video srcObject: ${lv.srcObject ? 'set' : 'null'} | readyState: ${lv.readyState} | paused: ${lv.paused}`,
-    `remote-video srcObject: ${rv.srcObject ? 'set' : 'null'} | readyState: ${rv.readyState} | paused: ${rv.paused}`,
-    `pc connectionState: ${pc ? pc.connectionState : 'null'} | iceState: ${pc ? pc.iceConnectionState : 'null'}`,
-    `dataChannel: ${dataChannel ? dataChannel.readyState : 'null'}`,
-  ];
-  document.getElementById('debug-info').textContent = lines.join('\n');
-}
-
-async function refreshVideoSources() {
-  const lv = document.getElementById('local-video');
-  const rv = document.getElementById('remote-video');
-
-  // Stop the shared RAF loop before touching srcObject
-  stopHandDetection();
-
-  if (localStream) {
-    lv.srcObject = null;
-    lv.srcObject = localStream;
-    lv.play().catch(e => console.warn('local play:', e));
-  }
-
-  if (!remoteStream && pc) {
-    const videoReceiver = pc.getReceivers().find(r => r.track?.kind === 'video');
-    if (videoReceiver) remoteStream = new MediaStream([videoReceiver.track]);
-  }
-  if (remoteStream) {
-    rv.srcObject = null;
-    rv.srcObject = remoteStream;
-    rv.play().catch(e => console.warn('remote play:', e));
-  }
-
-  await new Promise(r => setTimeout(r, 250));
-
-  // Start the single shared detection loop
-  if (localStream || remoteStream) {
-    startSharedHandDetection(lv, rv);
-  }
-
-  updateDebugInfo();
-}
-
-function copyText(preId, btn) {
-  const text = document.getElementById(preId).textContent;
-  navigator.clipboard.writeText(text);
-  btn.textContent = 'COPIED!';
-  setTimeout(() => btn.textContent = 'COPY', 2000);
-}
-
-// ─────────────────────────────────────────────────────
-//  CAMERA
-// ─────────────────────────────────────────────────────
+// ── Camera ─────────────────────────────────────────────────────────────────
 async function getCamera() {
-  const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
-  localStream = stream;
-  return stream;
+  localStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+  return localStream;
 }
 
-// ─────────────────────────────────────────────────────
-//  WEBRTC
-// ─────────────────────────────────────────────────────
+// ── WebRTC ─────────────────────────────────────────────────────────────────
 function createPC() {
   pc = new RTCPeerConnection(ICE_SERVERS);
-
-  pc.ontrack = (e) => {
+  pc.ontrack = e => {
     if (e.track.kind !== 'video') return;
-    remoteStream = e.streams && e.streams[0] ? e.streams[0] : new MediaStream([e.track]);
+    remoteStream = e.streams?.[0] ?? new MediaStream([e.track]);
   };
-
   pc.onconnectionstatechange = () => {
     if (pc.connectionState === 'connected') showConnected();
     if (pc.connectionState === 'failed') alert('Connection failed — may need TURN server for cross-network.');
   };
-
   pc.oniceconnectionstatechange = () => {
     if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') showConnected();
   };
-
   return pc;
 }
 
@@ -1075,40 +475,24 @@ function gatherIce(pc, localDesc) {
   });
 }
 
-// ─────────────────────────────────────────────────────
-//  INITIATOR FLOW
-// ─────────────────────────────────────────────────────
+// ── Initiator ──────────────────────────────────────────────────────────────
 async function startInitiator() {
-  hide('init-pregame');
-  show('init-loading');
-  setLoadingMsg('init-loading-msg', 'Starting camera…');
-
+  hide('init-pregame'); show('init-loading'); setMsg('init-loading-msg', 'Starting camera…');
   let stream;
-  try {
-    stream = await getCamera();
-  } catch(e) {
-    alert('Could not access camera: ' + e.message);
-    show('init-pregame'); hide('init-loading'); return;
-  }
+  try { stream = await getCamera(); }
+  catch(e) { alert('Camera error: ' + e.message); show('init-pregame'); hide('init-loading'); return; }
 
   createPC();
   dataChannel = pc.createDataChannel('pinky');
   setupDataChannel(dataChannel);
   stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
-  setLoadingMsg('init-loading-msg', 'Creating room…');
-  const offer = await pc.createOffer();
-  const fullOffer = await gatherIce(pc, offer);
+  setMsg('init-loading-msg', 'Creating room…');
+  const fullOffer = await gatherIce(pc, await pc.createOffer());
 
   let roomCode;
-  try {
-    const res = await apiPost('/create', { offer: JSON.stringify(fullOffer) });
-    roomCode = res.roomCode;
-    currentRoomCode = roomCode;
-  } catch(e) {
-    alert('Could not reach signaling server: ' + e.message);
-    show('init-pregame'); hide('init-loading'); return;
-  }
+  try { ({ roomCode } = await apiPost('/create', { offer: JSON.stringify(fullOffer) })); }
+  catch(e) { alert('Signaling error: ' + e.message); show('init-pregame'); hide('init-loading'); return; }
 
   hide('init-loading');
   document.getElementById('room-code-display').textContent = roomCode;
@@ -1119,29 +503,23 @@ async function startInitiator() {
     await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(answerSdp)));
     hide('init-waiting');
     fetch(SIGNAL_URL + `/room/${roomCode}`, { method: 'DELETE' }).catch(() => {});
-  } catch(e) {
-    alert('Partner did not join in time, or an error occurred: ' + e.message);
-  }
+  } catch(e) { alert('Partner did not join in time: ' + e.message); }
 }
 
 function copyRoomCode(btn) {
-  const code = document.getElementById('room-code-display').textContent;
-  navigator.clipboard.writeText(code);
+  navigator.clipboard.writeText(document.getElementById('room-code-display').textContent);
   btn.textContent = 'COPIED!';
   setTimeout(() => btn.textContent = 'COPY', 2000);
 }
 
-// ─────────────────────────────────────────────────────
-//  JOINER FLOW
-// ─────────────────────────────────────────────────────
+// ── Joiner ─────────────────────────────────────────────────────────────────
 async function startJoiner() {
   const rawCode = document.getElementById('room-code-input').value.trim().toUpperCase();
   if (!rawCode) return alert('Enter the room code first.');
 
-  document.querySelector('#joiner-input .btn-primary').disabled = true;
-  hide('joiner-input');
-  show('joiner-loading');
-  setLoadingMsg('joiner-loading-msg', 'Looking up room…');
+  const joinBtn = document.querySelector('#joiner-input .btn-primary');
+  joinBtn.disabled = true;
+  hide('joiner-input'); show('joiner-loading'); setMsg('joiner-loading-msg', 'Looking up room…');
 
   let offerSdp;
   try {
@@ -1149,281 +527,189 @@ async function startJoiner() {
     if (!data.offer) throw new Error('Room has no offer yet');
     offerSdp = JSON.parse(data.offer);
   } catch(e) {
-    alert('Could not find room "' + rawCode + '": ' + e.message);
-    show('joiner-input'); hide('joiner-loading');
-    document.querySelector('#joiner-input .btn-primary').disabled = false;
-    return;
+    alert('Could not find room: ' + e.message);
+    show('joiner-input'); hide('joiner-loading'); joinBtn.disabled = false; return;
   }
 
-  setLoadingMsg('joiner-loading-msg', 'Starting camera…');
+  setMsg('joiner-loading-msg', 'Starting camera…');
   let stream;
-  try {
-    stream = await getCamera();
-  } catch(e) {
-    alert('Could not access camera: ' + e.message);
-    show('joiner-input'); hide('joiner-loading');
-    document.querySelector('#joiner-input .btn-primary').disabled = false;
-    return;
+  try { stream = await getCamera(); }
+  catch(e) {
+    alert('Camera error: ' + e.message);
+    show('joiner-input'); hide('joiner-loading'); joinBtn.disabled = false; return;
   }
 
   createPC();
-  pc.ondatachannel = (e) => { dataChannel = e.channel; setupDataChannel(dataChannel); };
+  pc.ondatachannel = e => { dataChannel = e.channel; setupDataChannel(dataChannel); };
   stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
   try {
-    setLoadingMsg('joiner-loading-msg', 'Exchanging connection details…');
+    setMsg('joiner-loading-msg', 'Exchanging connection details…');
     await pc.setRemoteDescription(new RTCSessionDescription(offerSdp));
-    const answer = await pc.createAnswer();
-    const fullAnswer = await gatherIce(pc, answer);
-
+    const fullAnswer = await gatherIce(pc, await pc.createAnswer());
     await apiPost(`/join/${rawCode}`, { answer: JSON.stringify(fullAnswer) });
-    currentRoomCode = rawCode;
-
-    hide('joiner-loading');
-    show('joiner-codes');
+    hide('joiner-loading'); show('joiner-codes');
   } catch(e) {
     alert('Connection failed: ' + e.message);
-    show('joiner-input'); hide('joiner-loading');
-    document.querySelector('#joiner-input .btn-primary').disabled = false;
-    console.error(e);
+    show('joiner-input'); hide('joiner-loading'); joinBtn.disabled = false;
   }
 }
 
-function setLoadingMsg(id, msg) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = msg;
-}
-
-// ─────────────────────────────────────────────────────
-//  DATA CHANNEL
-// ─────────────────────────────────────────────────────
+// ── Data channel ───────────────────────────────────────────────────────────
 function setupDataChannel(dc) {
-  dc.onmessage = (e) => {
+  dc.onmessage = e => {
     const msg = JSON.parse(e.data);
     if (msg.type === 'pinky') {
-      remotePinkyHistory.shift();
-      remotePinkyHistory.push(msg.up);
+      remotePinkyHistory.shift(); remotePinkyHistory.push(msg.up);
       setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
     }
-    if (msg.type === 'photo_frame') {
-      captureAndShowPhoto(msg.data);
-    }
+    if (msg.type === 'photo_frame') captureAndShowPhoto(msg.data);
   };
   dc.bufferedAmountLowThreshold = 65536;
 }
 
 function sendPinkyState(up) {
-  if (dataChannel && dataChannel.readyState === 'open') {
-    dataChannel.send(JSON.stringify({ type: 'pinky', up }));
-  }
+  if (dataChannel?.readyState === 'open') dataChannel.send(JSON.stringify({ type: 'pinky', up }));
 }
 
-// ─────────────────────────────────────────────────────
-//  NEURAL NET — tiny MLP forward pass in JS
-//  Loaded from pinky_model.json (sklearn MLP weights)
-// ─────────────────────────────────────────────────────
-let pinkyModel = null;  // { layers: [{w, b},...], classes: [...] }
+// ── Neural net pinky classifier ────────────────────────────────────────────
+let pinkyModel = null;
+const PINKY_THRESHOLD = 0.65;
 
 async function loadPinkyModel() {
   try {
     const res = await fetch('https://ctborg.github.io/ps/pinky_model.json');
     pinkyModel = await res.json();
-    console.log('Pinky model loaded ✓ classes:', pinkyModel.classes);
   } catch(e) {
-    console.warn('Could not load pinky model, falling back to heuristic:', e);
+    console.warn('Pinky model unavailable, using geometric fallback:', e);
   }
 }
 
-// ReLU activation
-function relu(x) { return Math.max(0, x); }
-
-// Sigmoid activation
-function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
-
-// Matrix multiply: (1 x in) * (in x out) + bias → (1 x out)
 function linearLayer(input, w, b) {
-  const out = new Array(b.length).fill(0);
-  for (let j = 0; j < b.length; j++) {
-    let sum = b[j];
-    for (let i = 0; i < input.length; i++) {
-      sum += input[i] * w[i][j];
-    }
-    out[j] = sum;
-  }
-  return out;
+  return b.map((bias, j) => input.reduce((sum, xi, i) => sum + xi * w[i][j], bias));
 }
 
-// Run the MLP: input is flat array of 63 floats [x0,y0,z0,...,x20,y20,z20]
-// Returns probability of pinky_swear (0..1)
 function runPinkyModel(flat) {
-  if (!pinkyModel) return null;
-  const layers = pinkyModel.layers;
   let x = flat;
-  // Hidden layers: relu
+  const { layers } = pinkyModel;
   for (let i = 0; i < layers.length - 1; i++) {
-    x = linearLayer(x, layers[i].w, layers[i].b).map(relu);
+    x = linearLayer(x, layers[i].w, layers[i].b).map(v => Math.max(0, v)); // ReLU
   }
-  // Output layer: sigmoid
   const last = layers[layers.length - 1];
-  x = linearLayer(x, last.w, last.b).map(sigmoid);
-  // x[0] = probability of class index 1 = pinky_swear (since classes are alphabetical)
-  // classes: ["not_pinky", "pinky_swear"] → index 1 = pinky_swear
-  return x[0];
+  x = linearLayer(x, last.w, last.b).map(v => 1 / (1 + Math.exp(-v)));    // sigmoid
+  return x[0]; // P(pinky_swear)
 }
-
-// Flatten MediaPipe landmarks to [x0,y0,z0,...] array
-function flattenLandmarks(landmarks) {
-  const flat = [];
-  for (const l of landmarks) flat.push(l.x, l.y, l.z);
-  return flat;
-}
-
-// Geometric fallback if model hasn't loaded yet
-function isPinkyUpHeuristic(landmarks) {
-  const tip = landmarks[20], mcp = landmarks[17], wrist = landmarks[0];
-  const handHeight = Math.abs(wrist.y - landmarks[9].y);
-  return (mcp.y - tip.y) > handHeight * 0.25;
-}
-
-// Main detection function — uses NN if loaded, heuristic otherwise
-const PINKY_THRESHOLD = 0.72;  // tune this if too sensitive / not sensitive enough
 
 function isPinkyUp(landmarks) {
   if (!landmarks) return false;
   if (pinkyModel) {
-    const flat = flattenLandmarks(landmarks);
-    const prob = runPinkyModel(flat);
-    return prob > PINKY_THRESHOLD;
+    return runPinkyModel(landmarks.flatMap(l => [l.x, l.y, l.z])) > PINKY_THRESHOLD;
   }
-  return isPinkyUpHeuristic(landmarks);
+  // Geometric fallback
+  const tip = landmarks[20], mcp = landmarks[17], wrist = landmarks[0];
+  return (mcp.y - tip.y) > Math.abs(wrist.y - landmarks[9].y) * 0.25;
 }
 
-// Kick off model load immediately
 loadPinkyModel();
 
+// ── MediaPipe — single shared instance, time-sliced ────────────────────────
 function stopHandDetection() {
   if (handsRafId) { cancelAnimationFrame(handsRafId); handsRafId = null; }
   handsSending = false;
 }
 
+async function refreshVideoSources() {
+  const lv = document.getElementById('local-video');
+  const rv = document.getElementById('remote-video');
+  stopHandDetection();
+
+  if (localStream) { lv.srcObject = null; lv.srcObject = localStream; lv.play().catch(() => {}); }
+
+  if (!remoteStream && pc) {
+    const recv = pc.getReceivers().find(r => r.track?.kind === 'video');
+    if (recv) remoteStream = new MediaStream([recv.track]);
+  }
+  if (remoteStream) { rv.srcObject = null; rv.srcObject = remoteStream; rv.play().catch(() => {}); }
+
+  await new Promise(r => setTimeout(r, 250));
+  if (localStream || remoteStream) startSharedHandDetection(lv, rv);
+}
+
 function startSharedHandDetection(localVideo, remoteVideo) {
   stopHandDetection();
-  handsLocalVideo  = localVideo;
-  handsRemoteVideo = remoteVideo;
-  handsTurn = 'local';
+  handsLocalVideo = localVideo; handsRemoteVideo = remoteVideo; handsTurn = 'local';
 
-  // Create once, reuse forever
   if (!sharedHands) {
-    sharedHands = new Hands({
-      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
-    });
-    sharedHands.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 0,
-      minDetectionConfidence: 0.65,
-      minTrackingConfidence: 0.5
-    });
-    handsReady = false;
+    sharedHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+    sharedHands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.65, minTrackingConfidence: 0.5 });
   }
 
-  // Single onResults handler — dispatches by handsTurn at time of send
-  sharedHands.onResults((results) => {
+  sharedHands.onResults(results => {
     const isLocal = (handsTurn === 'local');
+    const videoEl = isLocal ? handsLocalVideo : handsRemoteVideo;
+    const canvas  = document.getElementById(isLocal ? 'local-canvas' : 'remote-canvas');
+    const ctx     = canvas.getContext('2d');
+
+    canvas.width  = videoEl.videoWidth  || 640;
+    canvas.height = videoEl.videoHeight || 480;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    let detected = false;
+    if (results.multiHandLandmarks?.length) {
+      detected = isPinkyUp(results.multiHandLandmarks[0]);
+      drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, detected);
+    }
 
     if (isLocal) {
-      const canvas = document.getElementById('local-canvas');
-      const ctx    = canvas.getContext('2d');
-      canvas.width  = handsLocalVideo.videoWidth  || 640;
-      canvas.height = handsLocalVideo.videoHeight || 480;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      let detected = false;
-      if (results.multiHandLandmarks?.length) {
-        detected = isPinkyUp(results.multiHandLandmarks[0]);
-        drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, detected);
-      }
       localPinkyHistory.shift(); localPinkyHistory.push(detected);
       const stable = localPinkyHistory.filter(Boolean).length >= 4;
       if (stable !== localPinkyUp) {
         localPinkyUp = stable;
         sendPinkyState(localPinkyUp);
-        updateLocalPinkyUI(localPinkyUp);
+        document.getElementById('det-local').classList.toggle('on', localPinkyUp);
+        document.getElementById('local-pinky-icon').classList.toggle('active', localPinkyUp);
         checkBothPinkies();
       }
     } else {
-      const canvas = document.getElementById('remote-canvas');
-      const ctx    = canvas.getContext('2d');
-      canvas.width  = handsRemoteVideo.videoWidth  || 640;
-      canvas.height = handsRemoteVideo.videoHeight || 480;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      let detected = false;
-      if (results.multiHandLandmarks?.length) {
-        detected = isPinkyUp(results.multiHandLandmarks[0]);
-        drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, detected);
-      }
       remotePinkyHistory.shift(); remotePinkyHistory.push(detected);
-      const stable = remotePinkyHistory.filter(Boolean).length >= 4;
-      setRemotePinky(stable);
+      setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
     }
 
     handsSending = false;
-    // Alternate for next send
     handsTurn = isLocal ? 'remote' : 'local';
   });
 
   const loop = async () => {
     if (!handsSending) {
-      const isLocal  = (handsTurn === 'local');
-      const videoEl  = isLocal ? handsLocalVideo : handsRemoteVideo;
-      // Only send if the video element has data and we have a partner stream for remote
-      const hasRemote = handsRemoteVideo && handsRemoteVideo.srcObject && handsRemoteVideo.readyState >= 2 && !handsRemoteVideo.paused;
-      const hasLocal  = handsLocalVideo  && handsLocalVideo.srcObject  && handsLocalVideo.readyState  >= 2 && !handsLocalVideo.paused;
-      const canSend   = isLocal ? hasLocal : hasRemote;
-
-      // If remote isn't ready yet, stay on local
-      if (!canSend && !isLocal) {
-        handsTurn = 'local';
-      } else if (canSend && videoEl.readyState >= 2) {
-        handsSending = true;
-        await sharedHands.send({ image: videoEl }).catch(() => { handsSending = false; });
-      }
+      const isLocal = (handsTurn === 'local');
+      const videoEl = isLocal ? handsLocalVideo : handsRemoteVideo;
+      const ready   = videoEl?.srcObject && videoEl.readyState >= 2 && !videoEl.paused;
+      if (!ready && !isLocal) handsTurn = 'local';
+      else if (ready) { handsSending = true; await sharedHands.send({ image: videoEl }).catch(() => { handsSending = false; }); }
     }
     handsRafId = requestAnimationFrame(loop);
   };
-
   handsRafId = requestAnimationFrame(loop);
 }
 
 function drawPinkyHighlight(ctx, landmarks, w, h, pinkyUp) {
-  const ids = [17, 18, 19, 20];
   ctx.strokeStyle = pinkyUp ? '#ff4d8d' : 'rgba(255,255,255,0.3)';
-  ctx.lineWidth = pinkyUp ? 3 : 1.5;
-  ctx.shadowBlur = pinkyUp ? 12 : 0;
+  ctx.lineWidth   = pinkyUp ? 3 : 1.5;
   ctx.shadowColor = '#ff4d8d';
+  ctx.shadowBlur  = pinkyUp ? 12 : 0;
   ctx.beginPath();
-  ids.forEach((id, i) => {
+  [17,18,19,20].forEach((id,i) => {
     const x = landmarks[id].x * w, y = landmarks[id].y * h;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
   });
-  ctx.stroke();
-  ctx.shadowBlur = 0;
+  ctx.stroke(); ctx.shadowBlur = 0;
   const tip = landmarks[20];
-  ctx.beginPath();
-  ctx.arc(tip.x * w, tip.y * h, pinkyUp ? 7 : 4, 0, Math.PI * 2);
+  ctx.beginPath(); ctx.arc(tip.x*w, tip.y*h, pinkyUp?7:4, 0, Math.PI*2);
   ctx.fillStyle = pinkyUp ? '#ff4d8d' : 'rgba(255,255,255,0.4)';
-  ctx.shadowBlur = pinkyUp ? 16 : 0;
-  ctx.shadowColor = '#ff4d8d';
-  ctx.fill();
-  ctx.shadowBlur = 0;
+  ctx.shadowBlur = pinkyUp ? 16 : 0; ctx.fill(); ctx.shadowBlur = 0;
 }
 
-// ─────────────────────────────────────────────────────
-//  PINKY STATE
-// ─────────────────────────────────────────────────────
-function updateLocalPinkyUI(up) {
-  document.getElementById('det-local').classList.toggle('on', up);
-  document.getElementById('local-pinky-icon').classList.toggle('active', up);
-}
-
+// ── Pinky state ────────────────────────────────────────────────────────────
 function setRemotePinky(up) {
   if (up === remotePinkyUp) return;
   remotePinkyUp = up;
@@ -1436,223 +722,117 @@ function checkBothPinkies() {
   localPinkyUp && remotePinkyUp ? showBanner() : hideBanner();
 }
 
-// ─────────────────────────────────────────────────────
-//  PHOTO CAPTURE — overlapping polaroids
-// ─────────────────────────────────────────────────────
-let photoShown = false;
-
+// ── Photo ──────────────────────────────────────────────────────────────────
 function drawPolaroid(ctx, source, cx, cy, angleDeg, label, isLocal) {
-  const SIZE  = 260;
-  const PAD   = 14;
-  const FOOT  = 52;
-  const TW    = SIZE + PAD * 2;
-  const TH    = SIZE + PAD + FOOT;
-
+  const SIZE=260, PAD=14, FOOT=52, TW=SIZE+PAD*2, TH=SIZE+PAD+FOOT;
   const off = document.createElement('canvas');
-  off.width = TW; off.height = TH;
+  off.width=TW; off.height=TH;
   const oc = off.getContext('2d');
-
-  oc.fillStyle = '#fdf6e3';
-  oc.fillRect(0, 0, TW, TH);
-
-  oc.save();
-  oc.fillStyle = '#000';
-  oc.globalAlpha = 0.08;
-  oc.fillRect(PAD + 2, PAD + 2, SIZE - 4, SIZE - 4);
+  oc.fillStyle='#fdf6e3'; oc.fillRect(0,0,TW,TH);
+  oc.save(); oc.fillStyle='#000'; oc.globalAlpha=0.08; oc.fillRect(PAD+2,PAD+2,SIZE-4,SIZE-4); oc.restore();
+  oc.save(); oc.beginPath(); oc.rect(PAD,PAD,SIZE,SIZE); oc.clip();
+  const srcW=source.videoWidth||source.naturalWidth||source.width;
+  const srcH=source.videoHeight||source.naturalHeight||source.height;
+  let sw,sh,sx,sy;
+  if (srcW/srcH>1) { sh=srcH; sw=srcH; sx=(srcW-sw)/2; sy=0; }
+  else             { sw=srcW; sh=srcW; sx=0; sy=(srcH-sh)/4; }
+  if (isLocal) { oc.translate(PAD+SIZE,PAD); oc.scale(-1,1); oc.drawImage(source,sx,sy,sw,sh,0,0,SIZE,SIZE); }
+  else         { oc.drawImage(source,sx,sy,sw,sh,PAD,PAD,SIZE,SIZE); }
   oc.restore();
-
-  oc.save();
-  oc.beginPath();
-  oc.rect(PAD, PAD, SIZE, SIZE);
-  oc.clip();
-
-  let sw, sh, sx, sy;
-  const srcW = source.videoWidth  || source.naturalWidth  || source.width;
-  const srcH = source.videoHeight || source.naturalHeight || source.height;
-  const srcAR = srcW / srcH;
-
-  if (srcAR > 1) {
-    sh = srcH; sw = srcH;
-    sx = (srcW - sw) / 2; sy = 0;
-  } else {
-    sw = srcW; sh = srcW;
-    sx = 0; sy = (srcH - sh) / 4;
-  }
-
-  if (isLocal) {
-    oc.translate(PAD + SIZE, PAD);
-    oc.scale(-1, 1);
-    oc.drawImage(source, sx, sy, sw, sh, 0, 0, SIZE, SIZE);
-  } else {
-    oc.drawImage(source, sx, sy, sw, sh, PAD, PAD, SIZE, SIZE);
-  }
-  oc.restore();
-
-  oc.font = 'bold 13px "DM Mono", monospace';
-  oc.textAlign = 'center';
-  oc.fillStyle = '#1a0a2e';
-  oc.fillText(label, TW / 2, TH - 18);
-
-  oc.font = '18px serif';
-  oc.fillText('🤙', TW / 2, TH - 34);
-
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(angleDeg * Math.PI / 180);
-  ctx.shadowColor = 'rgba(0,0,0,0.45)';
-  ctx.shadowBlur  = 18;
-  ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 6;
-  ctx.drawImage(off, -TW / 2, -TH / 2);
-  ctx.restore();
+  oc.font='bold 13px "DM Mono",monospace'; oc.textAlign='center'; oc.fillStyle='#1a0a2e';
+  oc.fillText(label,TW/2,TH-18); oc.font='18px serif'; oc.fillText('🤙',TW/2,TH-34);
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(angleDeg*Math.PI/180);
+  ctx.shadowColor='rgba(0,0,0,0.45)'; ctx.shadowBlur=18; ctx.shadowOffsetX=4; ctx.shadowOffsetY=6;
+  ctx.drawImage(off,-TW/2,-TH/2); ctx.restore();
 }
 
-function captureAndShowPhoto(remoteFrameDataUrl = null) {
-  const lv     = document.getElementById('local-video');
-  const rv     = document.getElementById('remote-video');
-  const canvas = document.getElementById('photo-canvas');
-  const ctx    = canvas.getContext('2d');
+function captureAndShowPhoto(remoteFrameDataUrl=null) {
+  const lv=document.getElementById('local-video'), rv=document.getElementById('remote-video');
+  const canvas=document.getElementById('photo-canvas'), ctx=canvas.getContext('2d');
+  const CW=620, CH=520;
+  canvas.width=CW; canvas.height=CH;
 
-  const CW = 620, CH = 520;
-  canvas.width  = CW;
-  canvas.height = CH;
-
-  const renderComposite = (remoteSource) => {
-    const grad = ctx.createRadialGradient(CW/2, CH/2, 40, CW/2, CH/2, CW * 0.8);
-    grad.addColorStop(0, '#2d0f3e');
-    grad.addColorStop(1, '#0e0518');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, CW, CH);
-
-    for (let i = 0; i < 3000; i++) {
-      ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.025})`;
-      ctx.fillRect(Math.random() * CW, Math.random() * CH, 1, 1);
-    }
-
-    drawPolaroid(ctx, lv, CW * 0.35, CH * 0.50, -5, 'YOU', true);
-    drawPolaroid(ctx, remoteSource, CW * 0.65, CH * 0.48, 4, 'PARTNER', false);
-
-    ctx.save();
-    ctx.translate(CW / 2, CH * 0.88);
-    ctx.font = 'bold 15px "DM Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#ff4d8d';
-    ctx.globalAlpha = 0.9;
-    ctx.fillText('🤙  P I N K Y  S W E A R  🤙', 0, 0);
-    ctx.restore();
-
-    const now   = new Date();
-    const stamp = now.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
-      + '  ·  ' + now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
-    ctx.font = '11px "DM Mono", monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(245,200,66,0.55)';
-    ctx.globalAlpha = 1;
-    ctx.fillText(stamp, CW / 2, CH * 0.95);
-
-    document.getElementById('photo-download-btn').textContent = '⬆ Share / Save';
-    document.getElementById('photo-caption').textContent = stamp;
+  const render = remote => {
+    const g=ctx.createRadialGradient(CW/2,CH/2,40,CW/2,CH/2,CW*0.8);
+    g.addColorStop(0,'#2d0f3e'); g.addColorStop(1,'#0e0518');
+    ctx.fillStyle=g; ctx.fillRect(0,0,CW,CH);
+    for (let i=0;i<3000;i++) { ctx.fillStyle=`rgba(255,255,255,${Math.random()*0.025})`; ctx.fillRect(Math.random()*CW,Math.random()*CH,1,1); }
+    drawPolaroid(ctx,lv,CW*0.35,CH*0.50,-5,'YOU',true);
+    drawPolaroid(ctx,remote,CW*0.65,CH*0.48,4,'PARTNER',false);
+    ctx.save(); ctx.translate(CW/2,CH*0.88); ctx.font='bold 15px "DM Mono",monospace'; ctx.textAlign='center';
+    ctx.fillStyle='#ff4d8d'; ctx.globalAlpha=0.9; ctx.fillText('🤙  P I N K Y  S W E A R  🤙',0,0); ctx.restore();
+    const now=new Date();
+    const stamp=now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'  ·  '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    ctx.font='11px "DM Mono",monospace'; ctx.textAlign='center'; ctx.fillStyle='rgba(245,200,66,0.55)'; ctx.globalAlpha=1;
+    ctx.fillText(stamp,CW/2,CH*0.95);
+    document.getElementById('photo-caption').textContent=stamp;
     document.getElementById('photo-modal').classList.add('show');
   };
 
-  if (remoteFrameDataUrl) {
-    const img = new Image();
-    img.onload = () => renderComposite(img);
-    img.src = remoteFrameDataUrl;
-  } else {
-    renderComposite(rv);
-
-    const localCanvas = document.createElement('canvas');
-    localCanvas.width  = lv.videoWidth  || 640;
-    localCanvas.height = lv.videoHeight || 480;
-    const lctx = localCanvas.getContext('2d');
-    lctx.save();
-    lctx.translate(localCanvas.width, 0); lctx.scale(-1, 1);
-    lctx.drawImage(lv, 0, 0);
-    lctx.restore();
-    if (dataChannel && dataChannel.readyState === 'open') {
-      dataChannel.send(JSON.stringify({
-        type: 'photo_frame',
-        data: localCanvas.toDataURL('image/jpeg', 0.8),
-      }));
-    }
+  if (remoteFrameDataUrl) { const img=new Image(); img.onload=()=>render(img); img.src=remoteFrameDataUrl; }
+  else {
+    render(rv);
+    const lc=document.createElement('canvas');
+    lc.width=lv.videoWidth||640; lc.height=lv.videoHeight||480;
+    const lctx=lc.getContext('2d');
+    lctx.save(); lctx.translate(lc.width,0); lctx.scale(-1,1); lctx.drawImage(lv,0,0); lctx.restore();
+    if (dataChannel?.readyState==='open') dataChannel.send(JSON.stringify({type:'photo_frame',data:lc.toDataURL('image/jpeg',0.8)}));
   }
 }
 
-function closePhotoModal() {
-  document.getElementById('photo-modal').classList.remove('show');
-  photoShown = false;
-}
+function closePhotoModal() { document.getElementById('photo-modal').classList.remove('show'); photoShown=false; }
 
 async function downloadPhoto() {
-  const canvas = document.getElementById('photo-canvas');
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-
-  const res   = await fetch(dataUrl);
-  const blob  = await res.blob();
-  const file  = new File([blob], `pinky-swear-${Date.now()}.jpg`, { type: 'image/jpeg' });
-
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: 'Pinky Swear!', text: '🤙 We pinky swore!' });
-      return;
-    } catch (e) {
-      if (e.name === 'AbortError') return;
-    }
+  const dataUrl=document.getElementById('photo-canvas').toDataURL('image/jpeg',0.92);
+  const blob=await (await fetch(dataUrl)).blob();
+  const file=new File([blob],`pinky-swear-${Date.now()}.jpg`,{type:'image/jpeg'});
+  if (navigator.canShare?.({files:[file]})) {
+    try { await navigator.share({files:[file],title:'Pinky Swear!',text:'🤙 We pinky swore!'}); return; }
+    catch(e) { if (e.name==='AbortError') return; }
   }
-
-  const a = document.createElement('a');
-  a.download = `pinky-swear-${Date.now()}.jpg`;
-  a.href = dataUrl;
-  a.click();
+  const a=document.createElement('a'); a.download=`pinky-swear-${Date.now()}.jpg`; a.href=dataUrl; a.click();
 }
 
-// ─────────────────────────────────────────────────────
-//  BANNER & CONFETTI
-// ─────────────────────────────────────────────────────
+// ── Banner & confetti ──────────────────────────────────────────────────────
 function showBanner() {
   if (bannerShowing) return;
-  bannerShowing = true;
+  bannerShowing=true;
   document.getElementById('pinky-banner').classList.add('show');
   launchConfetti();
-  if (!photoShown) {
-    photoShown = true;
-    setTimeout(() => captureAndShowPhoto(), 800);
-  }
+  if (!photoShown) { photoShown=true; setTimeout(()=>captureAndShowPhoto(),800); }
 }
 
 function hideBanner() {
   if (!bannerShowing) return;
-  bannerShowing = false;
+  bannerShowing=false;
   document.getElementById('pinky-banner').classList.remove('show');
 }
 
 function launchConfetti() {
-  const colors = ['#ff4d8d', '#f5c842', '#3dffa0', '#fdf6e3', '#a78bfa'];
-  for (let i = 0; i < 60; i++) {
-    setTimeout(() => {
-      const el = document.createElement('div');
-      el.className = 'confetti-particle';
-      el.style.cssText = `left:${Math.random()*100}vw;top:-20px;background:${colors[Math.floor(Math.random()*colors.length)]};width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*0.5}s`;
+  const colors=['#ff4d8d','#f5c842','#3dffa0','#fdf6e3','#a78bfa'];
+  for (let i=0;i<60;i++) {
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='confetti-particle';
+      el.style.cssText=`left:${Math.random()*100}vw;top:-20px;background:${colors[Math.floor(Math.random()*colors.length)]};width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;animation-duration:${1.5+Math.random()*2}s;animation-delay:${Math.random()*0.5}s`;
       document.body.appendChild(el);
-      setTimeout(() => el.remove(), 4000);
-    }, i * 30);
+      setTimeout(()=>el.remove(),4000);
+    },i*30);
   }
 }
 
-// ─────────────────────────────────────────────────────
-//  IOS-SAFE EVENT WIRING
-// ─────────────────────────────────────────────────────
+// ── iOS-safe tap wiring ────────────────────────────────────────────────────
 function onTap(el, fn) {
-  el.addEventListener('touchend', (e) => { e.preventDefault(); fn(); }, { passive: false });
+  el.addEventListener('touchend', e => { e.preventDefault(); fn(); }, { passive: false });
   el.addEventListener('click', fn);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  onTap(document.getElementById('btn-initiator'), () => selectRole('initiator'));
-  onTap(document.getElementById('btn-joiner'),    () => selectRole('joiner'));
-  onTap(document.getElementById('role-next-btn'), () => { if (!document.getElementById('role-next-btn').disabled) proceedFromRole(); });
+  onTap(document.getElementById('btn-initiator'),      () => selectRole('initiator'));
+  onTap(document.getElementById('btn-joiner'),         () => selectRole('joiner'));
+  onTap(document.getElementById('role-next-btn'),      () => { if (!document.getElementById('role-next-btn').disabled) proceedFromRole(); });
   onTap(document.getElementById('photo-download-btn'), downloadPhoto);
-  onTap(document.getElementById('photo-close-btn'), closePhotoModal);
+  onTap(document.getElementById('photo-close-btn'),    closePhotoModal);
 });
 </script>
 </body>
