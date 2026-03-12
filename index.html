@@ -428,9 +428,9 @@ let localPinkyUp = false, remotePinkyUp = false, bannerShowing = false, bannerCa
 let localPinkyHistory  = Array(6).fill(false);
 let remotePinkyHistory = Array(6).fill(false);
 
-// Single shared MediaPipe Hands instance — avoids WASM Module collision
+// Single shared MediaPipe Hands instance — two instances share WASM globals and corrupt each other
 let sharedHands = null, handsRafId = null, handsSending = false;
-let handsLocalVideo = null, handsRemoteVideo = null, handsTurn = 'local';
+let handsLocalVideo = null, handsRemoteVideo = null;
 
 const SIGNAL_URL = 'https://pinky-signal-wazbgraajq-uc.a.run.app';
 const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
@@ -688,7 +688,10 @@ function isPinkyUp(landmarks) {
 
 loadPinkyModel();
 
-// ── MediaPipe — single shared instance, time-sliced ────────────────────────
+// ── MediaPipe — single shared instance, time-sliced ───────────────────────
+// (Two instances share WASM global state and corrupt each other's results)
+let sharedHands = null, handsRafId = null, handsSending = false;
+
 function stopHandDetection() {
   if (handsRafId) { cancelAnimationFrame(handsRafId); handsRafId = null; }
   handsSending = false;
@@ -724,7 +727,6 @@ function startSharedHandDetection(localVideo, remoteVideo) {
       const videoEl = isLocal ? handsLocalVideo : handsRemoteVideo;
       const canvas  = document.getElementById(isLocal ? 'local-canvas' : 'remote-canvas');
       const ctx     = canvas.getContext('2d');
-
       canvas.width  = videoEl.videoWidth  || 640;
       canvas.height = videoEl.videoHeight || 480;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -737,7 +739,10 @@ function startSharedHandDetection(localVideo, remoteVideo) {
 
       if (isLocal) {
         localPinkyHistory.shift(); localPinkyHistory.push(detected);
-        const stable = localPinkyHistory.filter(Boolean).length >= 4;
+        // If remote pinky already confirmed, lower threshold to 2/4 for faster response
+        const needed = remotePinkyUp ? 2 : 4;
+        const window = remotePinkyUp ? 4 : 6;
+        const stable = localPinkyHistory.slice(-window).filter(Boolean).length >= needed;
         if (stable !== localPinkyUp) {
           localPinkyUp = stable;
           sendPinkyState(localPinkyUp);
@@ -747,7 +752,10 @@ function startSharedHandDetection(localVideo, remoteVideo) {
         }
       } else {
         remotePinkyHistory.shift(); remotePinkyHistory.push(detected);
-        setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
+        // If local pinky already confirmed, lower threshold to 2/4 for faster response
+        const needed = localPinkyUp ? 2 : 4;
+        const window = localPinkyUp ? 4 : 6;
+        setRemotePinky(remotePinkyHistory.slice(-window).filter(Boolean).length >= needed);
       }
 
       handsSending = false;
@@ -755,17 +763,15 @@ function startSharedHandDetection(localVideo, remoteVideo) {
   }
 
   let lastSentIsLocal = true;
-  let frameCount = 0;
 
   const loop = async () => {
     if (!handsSending) {
-      frameCount++;
-      // Local runs every frame; remote runs every other frame
       const remoteReady = handsRemoteVideo?.srcObject && handsRemoteVideo.readyState >= 2 && !handsRemoteVideo.paused;
-      const sendLocal   = !remoteReady || (frameCount % 2 !== 0);
-      const videoEl     = sendLocal ? handsLocalVideo : handsRemoteVideo;
-      const ready       = videoEl?.srcObject && videoEl.readyState >= 2 && !videoEl.paused;
-
+      // Always alternate strictly — one local, one remote, one local...
+      // but if remote isn't ready, always run local
+      const sendLocal = !remoteReady || lastSentIsLocal === false;
+      const videoEl   = sendLocal ? handsLocalVideo : handsRemoteVideo;
+      const ready     = videoEl?.srcObject && videoEl.readyState >= 2 && !videoEl.paused;
       if (ready) {
         lastSentIsLocal = sendLocal;
         handsSending = true;
