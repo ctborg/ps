@@ -713,14 +713,14 @@ async function refreshVideoSources() {
 
 function startSharedHandDetection(localVideo, remoteVideo) {
   stopHandDetection();
-  handsLocalVideo = localVideo; handsRemoteVideo = remoteVideo; handsTurn = 'local';
+  handsLocalVideo = localVideo; handsRemoteVideo = remoteVideo;
 
   if (!sharedHands) {
     sharedHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
     sharedHands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.65, minTrackingConfidence: 0.5 });
 
     sharedHands.onResults(results => {
-      const isLocal = (handsTurn === 'local');
+      const isLocal = (lastSentIsLocal === true);
       const videoEl = isLocal ? handsLocalVideo : handsRemoteVideo;
       const canvas  = document.getElementById(isLocal ? 'local-canvas' : 'remote-canvas');
       const ctx     = canvas.getContext('2d');
@@ -751,17 +751,26 @@ function startSharedHandDetection(localVideo, remoteVideo) {
       }
 
       handsSending = false;
-      handsTurn = isLocal ? 'remote' : 'local';
     });
   }
 
+  let lastSentIsLocal = true;
+  let frameCount = 0;
+
   const loop = async () => {
     if (!handsSending) {
-      const isLocal = (handsTurn === 'local');
-      const videoEl = isLocal ? handsLocalVideo : handsRemoteVideo;
-      const ready   = videoEl?.srcObject && videoEl.readyState >= 2 && !videoEl.paused;
-      if (!ready && !isLocal) handsTurn = 'local';
-      else if (ready) { handsSending = true; await sharedHands.send({ image: videoEl }).catch(() => { handsSending = false; }); }
+      frameCount++;
+      // Local runs every frame; remote runs every other frame
+      const remoteReady = handsRemoteVideo?.srcObject && handsRemoteVideo.readyState >= 2 && !handsRemoteVideo.paused;
+      const sendLocal   = !remoteReady || (frameCount % 2 !== 0);
+      const videoEl     = sendLocal ? handsLocalVideo : handsRemoteVideo;
+      const ready       = videoEl?.srcObject && videoEl.readyState >= 2 && !videoEl.paused;
+
+      if (ready) {
+        lastSentIsLocal = sendLocal;
+        handsSending = true;
+        await sharedHands.send({ image: videoEl }).catch(() => { handsSending = false; });
+      }
     }
     handsRafId = requestAnimationFrame(loop);
   };
