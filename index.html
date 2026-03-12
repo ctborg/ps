@@ -657,7 +657,7 @@ function sendPinkyState(up) {
 
 // ── Neural net pinky classifier ────────────────────────────────────────────
 let pinkyModel = null;
-const PINKY_THRESHOLD = 0.65;
+const PINKY_THRESHOLD = 0.5;
 
 async function loadPinkyModel() {
   try {
