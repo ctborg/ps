@@ -1286,7 +1286,7 @@ function isPinkyUpHeuristic(landmarks) {
 }
 
 // Main detection function — uses NN if loaded, heuristic otherwise
-const PINKY_THRESHOLD = 0.65;  // tune this if too sensitive / not sensitive enough
+const PINKY_THRESHOLD = 0.72;  // tune this if too sensitive / not sensitive enough
 
 function isPinkyUp(landmarks) {
   if (!landmarks) return false;
