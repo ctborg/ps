@@ -476,6 +476,7 @@ function proceedFromRole() {
   show('panel-main');
   document.getElementById('panel-main').classList.add('active');
   show(role === 'initiator' ? 'ui-initiator' : 'ui-joiner');
+  if (role === 'joiner') setTimeout(() => document.getElementById('room-code-input').focus(), 50);
 }
 
 function setStep(n) {
@@ -799,8 +800,86 @@ function checkBothPinkies() {
 
 // ── Photo ──────────────────────────────────────────────────────────────────
 
-function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp) {
-  const SIZE=240, PAD=12, FOOT=48, TW=SIZE+PAD*2, TH=SIZE+PAD+FOOT;
+// 7-segment LED timestamp renderer
+// Each digit is defined as a bitmask: segments [top, top-right, bot-right, bot, bot-left, top-left, middle]
+const SEG7 = {
+  '0':[1,1,1,1,1,1,0], '1':[0,1,1,0,0,0,0], '2':[1,1,0,1,1,0,1],
+  '3':[1,1,1,1,0,0,1], '4':[0,1,1,0,0,1,1], '5':[1,0,1,1,0,1,1],
+  '6':[1,0,1,1,1,1,1], '7':[1,1,1,0,0,0,0], '8':[1,1,1,1,1,1,1],
+  '9':[1,1,1,1,0,1,1], ':':[0,0,0,0,0,0,0], ' ':[0,0,0,0,0,0,0],
+  '/':[0,0,0,0,0,0,0], 'A':[1,1,1,0,1,1,1], 'P':[1,1,0,0,1,1,1],
+  'M':[1,1,1,0,1,1,0],
+};
+
+function draw7seg(ctx, char, x, y, W, H, color, dimColor) {
+  const T = Math.max(1, W * 0.18); // segment thickness
+  const G = T * 0.15;              // gap between segments
+  const segs = SEG7[char] || [0,0,0,0,0,0,0];
+  const draw = (on, path) => {
+    ctx.fillStyle = on ? color : dimColor;
+    ctx.beginPath(); path(); ctx.fill();
+  };
+  const hSeg = (sx, sy, w) => {
+    const hw = w/2 - G;
+    ctx.moveTo(sx-hw+T/2, sy); ctx.lineTo(sx+hw-T/2, sy);
+    ctx.lineTo(sx+hw, sy+T/2); ctx.lineTo(sx+hw-T/2, sy+T);
+    ctx.lineTo(sx-hw+T/2, sy+T); ctx.lineTo(sx-hw, sy+T/2); ctx.closePath();
+  };
+  const vSeg = (sx, sy, h) => {
+    const hh = h/2 - G;
+    ctx.moveTo(sx, sy-hh+T/2); ctx.lineTo(sx+T/2, sy-hh);
+    ctx.lineTo(sx+T, sy-hh+T/2); ctx.lineTo(sx+T, sy+hh-T/2);
+    ctx.lineTo(sx+T/2, sy+hh); ctx.lineTo(sx, sy+hh-T/2); ctx.closePath();
+  };
+  const mx = x + W/2, my = y + H/2;
+  draw(segs[0], () => hSeg(mx, y,           W));           // top
+  draw(segs[1], () => vSeg(x+W-T, y+T/2,   H/2));         // top-right
+  draw(segs[2], () => vSeg(x+W-T, my+T/2,  H/2));         // bot-right
+  draw(segs[3], () => hSeg(mx, y+H-T,       W));           // bottom
+  draw(segs[4], () => vSeg(x,     my+T/2,   H/2));         // bot-left
+  draw(segs[5], () => vSeg(x,     y+T/2,    H/2));         // top-left
+  draw(segs[6], () => hSeg(mx, my-T/2,      W));           // middle
+}
+
+function drawLedTimestamp(ctx, stamp, rightX, bottomY) {
+  const DW=9, DH=16, GAP=2; // digit width, height, gap
+  const color    = 'rgba(255,185,40,0.95)';
+  const dimColor = 'rgba(255,185,40,0.10)';
+
+  // Measure total width
+  let totalW = 0;
+  for (const ch of stamp) {
+    totalW += (ch===':'||ch==='/'||ch===' ') ? DW*0.55 : DW;
+    totalW += GAP;
+  }
+
+  // Slight glow behind the display
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,150,0,0.7)';
+  ctx.shadowBlur = 8;
+
+  let cx = rightX - totalW;
+  for (const ch of stamp) {
+    const cw = (ch===':'||ch==='/'||ch===' ') ? DW*0.55 : DW;
+    if (ch === ':') {
+      // Two dots
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(cx+cw/2, bottomY-DH*0.65, 1.2, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx+cw/2, bottomY-DH*0.35, 1.2, 0, Math.PI*2); ctx.fill();
+    } else if (ch === '/') {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.moveTo(cx+cw*0.8,bottomY-DH); ctx.lineTo(cx+cw*0.2,bottomY); ctx.lineWidth=1.5; ctx.strokeStyle=color; ctx.stroke();
+    } else if (ch !== ' ') {
+      draw7seg(ctx, ch, cx, bottomY-DH, cw, DH, color, dimColor);
+    }
+    cx += cw + GAP;
+  }
+  ctx.restore();
+}
+
+function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp, scale=1) {
+  const SIZE=240*scale, PAD=12*scale, FOOT=48*scale;
+  const TW=SIZE+PAD*2, TH=SIZE+PAD+FOOT;
   canvas.width=TW; canvas.height=TH;
   const ctx=canvas.getContext('2d');
   ctx.fillStyle='#fdf6e3'; ctx.fillRect(0,0,TW,TH);
@@ -814,20 +893,17 @@ function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp) {
   if (isLocal) { ctx.translate(PAD+SIZE,PAD); ctx.scale(-1,1); ctx.drawImage(source,sx,sy,sw,sh,0,0,SIZE,SIZE); }
   else         { ctx.drawImage(source,sx,sy,sw,sh,PAD,PAD,SIZE,SIZE); }
 
-  // Vintage timestamp — bottom-right corner of the photo area, amber glow
+  // 7-segment LED timestamp
   if (stamp) {
-    ctx.font = 'italic bold 11px "Georgia", serif';
-    ctx.textAlign = 'right';
-    ctx.shadowColor = 'rgba(255,160,30,0.9)';
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = 'rgba(255,180,40,0.88)';
-    ctx.fillText(stamp, PAD+SIZE-6, PAD+SIZE-7);
-    ctx.shadowBlur = 0;
+    ctx.save();
+    ctx.scale(scale, scale);
+    drawLedTimestamp(ctx, stamp, (PAD+SIZE)/scale - 5, (PAD+SIZE)/scale - 6);
+    ctx.restore();
   }
 
   ctx.restore();
-  ctx.font='bold 12px "DM Mono",monospace'; ctx.textAlign='center'; ctx.fillStyle='#1a0a2e';
-  ctx.fillText(label,TW/2,TH-14); ctx.font='16px serif'; ctx.fillText('🤙',TW/2,TH-30);
+  ctx.font=`bold ${12*scale}px "DM Mono",monospace`; ctx.textAlign='center'; ctx.fillStyle='#1a0a2e';
+  ctx.fillText(label,TW/2,TH-14*scale); ctx.font=`${16*scale}px serif`; ctx.fillText('🤙',TW/2,TH-30*scale);
 }
 
 function captureAndShowPhoto(remoteFrameDataUrl=null) {
@@ -870,22 +946,33 @@ function captureAndShowPhoto(remoteFrameDataUrl=null) {
 function closePhotoModal() { document.getElementById('photo-modal').classList.remove('show'); photoShown=false; }
 
 async function downloadPhoto() {
-  // Composite both polaroids onto a single canvas for sharing
-  const youCanvas     = document.getElementById('photo-canvas-you');
-  const partnerCanvas = document.getElementById('photo-canvas-partner');
-  const W = youCanvas.width + partnerCanvas.width + 40;
-  const H = Math.max(youCanvas.height, partnerCanvas.height) + 60;
-  const c = document.createElement('canvas'); c.width=W; c.height=H;
-  const ctx = c.getContext('2d');
-  const g = ctx.createRadialGradient(W/2,H/2,40,W/2,H/2,W*0.8);
+  // Render at 2× for crisp saved image
+  const SC = 2;
+  const lv=document.getElementById('local-video');
+  const rv=document.getElementById('remote-video');
+  const now=new Date();
+  const stamp=now.toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'2-digit'})
+    +' '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+
+  const yc=document.createElement('canvas');
+  const pc=document.createElement('canvas');
+  drawPolaroidToCanvas(yc, lv, 'YOU',     true,  stamp, SC);
+  // Use the partner canvas source — either remote video or the existing rendered canvas
+  const partnerSrc = rv.srcObject ? rv : document.getElementById('photo-canvas-partner');
+  drawPolaroidToCanvas(pc, partnerSrc, 'PARTNER', false, stamp, SC);
+
+  const W=(yc.width+pc.width)*1.1, H=Math.max(yc.height,pc.height)*1.25;
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
+  const ctx=c.getContext('2d');
+  const g=ctx.createRadialGradient(W/2,H/2,40,W/2,H/2,W*0.8);
   g.addColorStop(0,'#2d0f3e'); g.addColorStop(1,'#0e0518');
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-  ctx.save(); ctx.translate(W*0.28,H*0.48); ctx.rotate(-5*Math.PI/180); ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20; ctx.drawImage(youCanvas,-youCanvas.width/2,-youCanvas.height/2); ctx.restore();
-  ctx.save(); ctx.translate(W*0.72,H*0.48); ctx.rotate(4*Math.PI/180); ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20; ctx.drawImage(partnerCanvas,-partnerCanvas.width/2,-partnerCanvas.height/2); ctx.restore();
-  ctx.font='bold 13px "DM Mono",monospace'; ctx.textAlign='center'; ctx.fillStyle='#ff4d8d'; ctx.globalAlpha=0.9;
-  ctx.fillText('🤙  P I N K Y  S W E A R  🤙',W/2,H-12);
+  ctx.save(); ctx.translate(W*0.28,H*0.48); ctx.rotate(-5*Math.PI/180); ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20*SC; ctx.drawImage(yc,-yc.width/2,-yc.height/2); ctx.restore();
+  ctx.save(); ctx.translate(W*0.72,H*0.48); ctx.rotate(4*Math.PI/180);  ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20*SC; ctx.drawImage(pc,-pc.width/2,-pc.height/2); ctx.restore();
+  ctx.font=`bold ${14*SC}px "DM Mono",monospace`; ctx.textAlign='center'; ctx.fillStyle='#ff4d8d'; ctx.globalAlpha=0.9;
+  ctx.fillText('🤙  P I N K Y  S W E A R  🤙',W/2,H-16*SC);
 
-  const dataUrl=c.toDataURL('image/jpeg',0.92);
+  const dataUrl=c.toDataURL('image/jpeg',0.93);
   const blob=await (await fetch(dataUrl)).blob();
   const file=new File([blob],`pinky-swear-${Date.now()}.jpg`,{type:'image/jpeg'});
   if (navigator.canShare?.({files:[file]})) {
