@@ -1219,14 +1219,87 @@ function sendPinkyState(up) {
 }
 
 // ─────────────────────────────────────────────────────
-//  MEDIAPIPE — single shared instance, time-sliced between local + remote
+//  NEURAL NET — tiny MLP forward pass in JS
+//  Loaded from pinky_model.json (sklearn MLP weights)
 // ─────────────────────────────────────────────────────
-function isPinkyUp(landmarks) {
-  if (!landmarks) return false;
+let pinkyModel = null;  // { layers: [{w, b},...], classes: [...] }
+
+async function loadPinkyModel() {
+  try {
+    const res = await fetch('https://ctborg.github.io/ps/pinky_model.json');
+    pinkyModel = await res.json();
+    console.log('Pinky model loaded ✓ classes:', pinkyModel.classes);
+  } catch(e) {
+    console.warn('Could not load pinky model, falling back to heuristic:', e);
+  }
+}
+
+// ReLU activation
+function relu(x) { return Math.max(0, x); }
+
+// Sigmoid activation
+function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+
+// Matrix multiply: (1 x in) * (in x out) + bias → (1 x out)
+function linearLayer(input, w, b) {
+  const out = new Array(b.length).fill(0);
+  for (let j = 0; j < b.length; j++) {
+    let sum = b[j];
+    for (let i = 0; i < input.length; i++) {
+      sum += input[i] * w[i][j];
+    }
+    out[j] = sum;
+  }
+  return out;
+}
+
+// Run the MLP: input is flat array of 63 floats [x0,y0,z0,...,x20,y20,z20]
+// Returns probability of pinky_swear (0..1)
+function runPinkyModel(flat) {
+  if (!pinkyModel) return null;
+  const layers = pinkyModel.layers;
+  let x = flat;
+  // Hidden layers: relu
+  for (let i = 0; i < layers.length - 1; i++) {
+    x = linearLayer(x, layers[i].w, layers[i].b).map(relu);
+  }
+  // Output layer: sigmoid
+  const last = layers[layers.length - 1];
+  x = linearLayer(x, last.w, last.b).map(sigmoid);
+  // x[0] = probability of class index 1 = pinky_swear (since classes are alphabetical)
+  // classes: ["not_pinky", "pinky_swear"] → index 1 = pinky_swear
+  return x[0];
+}
+
+// Flatten MediaPipe landmarks to [x0,y0,z0,...] array
+function flattenLandmarks(landmarks) {
+  const flat = [];
+  for (const l of landmarks) flat.push(l.x, l.y, l.z);
+  return flat;
+}
+
+// Geometric fallback if model hasn't loaded yet
+function isPinkyUpHeuristic(landmarks) {
   const tip = landmarks[20], mcp = landmarks[17], wrist = landmarks[0];
   const handHeight = Math.abs(wrist.y - landmarks[9].y);
   return (mcp.y - tip.y) > handHeight * 0.25;
 }
+
+// Main detection function — uses NN if loaded, heuristic otherwise
+const PINKY_THRESHOLD = 0.65;  // tune this if too sensitive / not sensitive enough
+
+function isPinkyUp(landmarks) {
+  if (!landmarks) return false;
+  if (pinkyModel) {
+    const flat = flattenLandmarks(landmarks);
+    const prob = runPinkyModel(flat);
+    return prob > PINKY_THRESHOLD;
+  }
+  return isPinkyUpHeuristic(landmarks);
+}
+
+// Kick off model load immediately
+loadPinkyModel();
 
 function stopHandDetection() {
   if (handsRafId) { cancelAnimationFrame(handsRafId); handsRafId = null; }
