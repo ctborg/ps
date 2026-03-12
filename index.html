@@ -638,10 +638,7 @@ function setupDataChannel(dc) {
       remotePinkyHistory.shift(); remotePinkyHistory.push(msg.up);
       setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
     }
-    if (msg.type === 'photo_frame') {
-      showBanner();
-      captureAndShowPhoto(msg.data);
-    }
+    if (msg.type === 'photo_frame') captureAndShowPhoto(msg.data);
   };
   dc.bufferedAmountLowThreshold = 65536;
 }
@@ -720,42 +717,42 @@ function startSharedHandDetection(localVideo, remoteVideo) {
   if (!sharedHands) {
     sharedHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
     sharedHands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.65, minTrackingConfidence: 0.5 });
-  }
 
-  sharedHands.onResults(results => {
-    const isLocal = (handsTurn === 'local');
-    const videoEl = isLocal ? handsLocalVideo : handsRemoteVideo;
-    const canvas  = document.getElementById(isLocal ? 'local-canvas' : 'remote-canvas');
-    const ctx     = canvas.getContext('2d');
+    sharedHands.onResults(results => {
+      const isLocal = (handsTurn === 'local');
+      const videoEl = isLocal ? handsLocalVideo : handsRemoteVideo;
+      const canvas  = document.getElementById(isLocal ? 'local-canvas' : 'remote-canvas');
+      const ctx     = canvas.getContext('2d');
 
-    canvas.width  = videoEl.videoWidth  || 640;
-    canvas.height = videoEl.videoHeight || 480;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.width  = videoEl.videoWidth  || 640;
+      canvas.height = videoEl.videoHeight || 480;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    let detected = false;
-    if (results.multiHandLandmarks?.length) {
-      detected = isPinkyUp(results.multiHandLandmarks[0]);
-      drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, detected);
-    }
-
-    if (isLocal) {
-      localPinkyHistory.shift(); localPinkyHistory.push(detected);
-      const stable = localPinkyHistory.filter(Boolean).length >= 4;
-      if (stable !== localPinkyUp) {
-        localPinkyUp = stable;
-        sendPinkyState(localPinkyUp);
-        document.getElementById('det-local').classList.toggle('on', localPinkyUp);
-        document.getElementById('local-pinky-icon').classList.toggle('active', localPinkyUp);
-        checkBothPinkies();
+      let detected = false;
+      if (results.multiHandLandmarks?.length) {
+        detected = isPinkyUp(results.multiHandLandmarks[0]);
+        drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, detected);
       }
-    } else {
-      remotePinkyHistory.shift(); remotePinkyHistory.push(detected);
-      setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
-    }
 
-    handsSending = false;
-    handsTurn = isLocal ? 'remote' : 'local';
-  });
+      if (isLocal) {
+        localPinkyHistory.shift(); localPinkyHistory.push(detected);
+        const stable = localPinkyHistory.filter(Boolean).length >= 4;
+        if (stable !== localPinkyUp) {
+          localPinkyUp = stable;
+          sendPinkyState(localPinkyUp);
+          document.getElementById('det-local').classList.toggle('on', localPinkyUp);
+          document.getElementById('local-pinky-icon').classList.toggle('active', localPinkyUp);
+          checkBothPinkies();
+        }
+      } else {
+        remotePinkyHistory.shift(); remotePinkyHistory.push(detected);
+        setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
+      }
+
+      handsSending = false;
+      handsTurn = isLocal ? 'remote' : 'local';
+    });
+  }
 
   const loop = async () => {
     if (!handsSending) {
