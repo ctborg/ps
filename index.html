@@ -436,7 +436,7 @@ let remotePinkyHistory = Array(6).fill(false);
 
 // Single shared MediaPipe Hands instance — avoids WASM Module collision
 let sharedHands = null, handsRafId = null, handsSending = false;
-let handsLocalVideo = null, handsRemoteVideo = null, handsTurn = 'local';
+let handsLocalVideo = null, handsRemoteVideo = null;
 
 const SIGNAL_URL = 'https://pinky-signal-wazbgraajq-uc.a.run.app';
 const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
@@ -641,6 +641,7 @@ async function startJoiner() {
 function setupDataChannel(dc) {
   dc.onmessage = e => {
     const msg = JSON.parse(e.data);
+    // Even though we locally process the remote pinky now, keep this as a fallback synchronization
     if (msg.type === 'pinky') {
       remotePinkyHistory.shift(); remotePinkyHistory.push(msg.up);
       setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
@@ -694,7 +695,7 @@ function isPinkyUp(landmarks) {
 
 loadPinkyModel();
 
-// ── MediaPipe — single shared instance, time-sliced ────────────────────────
+// ── MediaPipe — single shared instance, composite feed ─────────────────────
 function stopHandDetection() {
   if (handsRafId) { cancelAnimationFrame(handsRafId); handsRafId = null; }
   handsSending = false;
@@ -723,59 +724,90 @@ function startSharedHandDetection(localVideo, remoteVideo) {
 
   if (!sharedHands) {
     sharedHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
-    sharedHands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.65, minTrackingConfidence: 0.5 });
+    // Configured for up to 2 hands to analyze our composite frame
+    sharedHands.setOptions({ maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 
     sharedHands.onResults(results => {
-      const isLocal = (lastSentIsLocal === true);
-      const videoEl = isLocal ? handsLocalVideo : handsRemoteVideo;
-      const canvas  = document.getElementById(isLocal ? 'local-canvas' : 'remote-canvas');
-      const ctx     = canvas.getContext('2d');
+      const lCanvas = document.getElementById('local-canvas');
+      const rCanvas = document.getElementById('remote-canvas');
+      const lCtx = lCanvas.getContext('2d');
+      const rCtx = rCanvas.getContext('2d');
 
-      canvas.width  = videoEl.videoWidth  || 640;
-      canvas.height = videoEl.videoHeight || 480;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      lCanvas.width = handsLocalVideo.videoWidth || 640;
+      lCanvas.height = handsLocalVideo.videoHeight || 480;
+      rCanvas.width = handsRemoteVideo?.videoWidth || 640;
+      rCanvas.height = handsRemoteVideo?.videoHeight || 480;
 
-      let detected = false;
+      lCtx.clearRect(0, 0, lCanvas.width, lCanvas.height);
+      rCtx.clearRect(0, 0, rCanvas.width, rCanvas.height);
+
+      let localDetected = false;
+      let remoteDetected = false;
+
       if (results.multiHandLandmarks?.length) {
-        detected = isPinkyUp(results.multiHandLandmarks[0]);
-        drawPinkyHighlight(ctx, results.multiHandLandmarks[0], canvas.width, canvas.height, detected);
+        results.multiHandLandmarks.forEach(landmarks => {
+          // Check X coordinate of the wrist to see which side of the 1280x480 canvas it's on
+          const isLocalSide = landmarks[0].x < 0.5;
+          const isUp = isPinkyUp(landmarks);
+
+          if (isLocalSide) {
+            localDetected = isUp;
+            // Map X back to 0.0 - 1.0 range for drawing on the local canvas
+            const mappedLandmarks = landmarks.map(l => ({ ...l, x: l.x * 2 }));
+            drawPinkyHighlight(lCtx, mappedLandmarks, lCanvas.width, lCanvas.height, isUp);
+          } else {
+            remoteDetected = isUp;
+            // Map X back to 0.0 - 1.0 range for drawing on the remote canvas
+            const mappedLandmarks = landmarks.map(l => ({ ...l, x: (l.x - 0.5) * 2 }));
+            drawPinkyHighlight(rCtx, mappedLandmarks, rCanvas.width, rCanvas.height, isUp);
+          }
+        });
       }
 
-      if (isLocal) {
-        localPinkyHistory.shift(); localPinkyHistory.push(detected);
-        const stable = localPinkyHistory.filter(Boolean).length >= 4;
-        if (stable !== localPinkyUp) {
-          localPinkyUp = stable;
-          sendPinkyState(localPinkyUp);
-          document.getElementById('det-local').classList.toggle('on', localPinkyUp);
-          document.getElementById('local-pinky-icon').classList.toggle('active', localPinkyUp);
-          checkBothPinkies();
-        }
-      } else {
-        remotePinkyHistory.shift(); remotePinkyHistory.push(detected);
-        setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
+      // 1. Process local state
+      localPinkyHistory.shift(); localPinkyHistory.push(localDetected);
+      const stableLocal = localPinkyHistory.filter(Boolean).length >= 4;
+      if (stableLocal !== localPinkyUp) {
+        localPinkyUp = stableLocal;
+        sendPinkyState(localPinkyUp);
+        document.getElementById('det-local').classList.toggle('on', localPinkyUp);
+        document.getElementById('local-pinky-icon').classList.toggle('active', localPinkyUp);
+        checkBothPinkies();
       }
+
+      // 2. Process remote state (visually inferred locally rather than relying purely on DataChannel latency)
+      remotePinkyHistory.shift(); remotePinkyHistory.push(remoteDetected);
+      setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
 
       handsSending = false;
     });
   }
 
-  let lastSentIsLocal = true;
-  let frameCount = 0;
+  // Create the off-screen staging canvas
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = 1280;
+  offCanvas.height = 480;
+  const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
 
   const loop = async () => {
     if (!handsSending) {
-      frameCount++;
-      // Local runs every frame; remote runs every other frame
-      const remoteReady = handsRemoteVideo?.srcObject && handsRemoteVideo.readyState >= 2 && !handsRemoteVideo.paused;
-      const sendLocal   = !remoteReady || (frameCount % 2 !== 0);
-      const videoEl     = sendLocal ? handsLocalVideo : handsRemoteVideo;
-      const ready       = videoEl?.srcObject && videoEl.readyState >= 2 && !videoEl.paused;
+      const localReady = handsLocalVideo?.readyState >= 2 && !handsLocalVideo.paused;
+      const remoteReady = handsRemoteVideo?.readyState >= 2 && !handsRemoteVideo.paused;
 
-      if (ready) {
-        lastSentIsLocal = sendLocal;
+      if (localReady || remoteReady) {
+        // Clear frame
+        offCtx.clearRect(0, 0, 1280, 480);
+        
+        // Draw feeds side-by-side
+        if (localReady) {
+          offCtx.drawImage(handsLocalVideo, 0, 0, 640, 480);
+        }
+        if (remoteReady) {
+          offCtx.drawImage(handsRemoteVideo, 640, 0, 640, 480);
+        }
+        
         handsSending = true;
-        await sharedHands.send({ image: videoEl }).catch(() => { handsSending = false; });
+        await sharedHands.send({ image: offCanvas }).catch(() => { handsSending = false; });
       }
     }
     handsRafId = requestAnimationFrame(loop);
