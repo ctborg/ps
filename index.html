@@ -230,12 +230,7 @@
     opacity: 0;
   }
 
-  .polaroid-wrap canvas {
-    width: 100%; display: block; border-radius: 1px;
-    image-rendering: auto;
-    transform: translateZ(0);
-    will-change: transform;
-  }
+  .polaroid-wrap canvas { width: 100%; display: block; border-radius: 1px; }
 
   .polaroid-label {
     text-align: center;
@@ -265,17 +260,17 @@
   }
 
   @keyframes flingLeft {
-    0%   { opacity: 0; transform: translateX(-140%) rotate(-540deg) translateZ(0); }
+    0%   { opacity: 0; transform: translateX(-140%) rotate(-540deg); }
     60%  { opacity: 1; }
-    85%  { transform: translateX(3%) rotate(4deg) translateZ(0); }
-    100% { opacity: 1; transform: translateX(0) rotate(-5deg) translateZ(0); }
+    85%  { transform: translateX(3%) rotate(4deg); }
+    100% { opacity: 1; transform: translateX(0) rotate(-5deg); }
   }
 
   @keyframes flingRight {
-    0%   { opacity: 0; transform: translateX(140%) rotate(540deg) translateZ(0); }
+    0%   { opacity: 0; transform: translateX(140%) rotate(540deg); }
     60%  { opacity: 1; }
-    85%  { transform: translateX(-3%) rotate(-4deg) translateZ(0); }
-    100% { opacity: 1; transform: translateX(0) rotate(4deg) translateZ(0); }
+    85%  { transform: translateX(-3%) rotate(-4deg); }
+    100% { opacity: 1; transform: translateX(0) rotate(4deg); }
   }
 
   #init-codes { transition: opacity 0.8s ease, max-height 0.6s ease 0.6s, margin-top 0.6s ease 0.6s; overflow: hidden; }
@@ -718,14 +713,14 @@ async function refreshVideoSources() {
 
 function startSharedHandDetection(localVideo, remoteVideo) {
   stopHandDetection();
-  handsLocalVideo = localVideo; handsRemoteVideo = remoteVideo;
+  handsLocalVideo = localVideo; handsRemoteVideo = remoteVideo; handsTurn = 'local';
 
   if (!sharedHands) {
     sharedHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
     sharedHands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.65, minTrackingConfidence: 0.5 });
 
     sharedHands.onResults(results => {
-      const isLocal = (lastSentIsLocal === true);
+      const isLocal = (handsTurn === 'local');
       const videoEl = isLocal ? handsLocalVideo : handsRemoteVideo;
       const canvas  = document.getElementById(isLocal ? 'local-canvas' : 'remote-canvas');
       const ctx     = canvas.getContext('2d');
@@ -742,10 +737,7 @@ function startSharedHandDetection(localVideo, remoteVideo) {
 
       if (isLocal) {
         localPinkyHistory.shift(); localPinkyHistory.push(detected);
-        // If remote already confirmed, only need 2/4 frames instead of 4/6
-        const wsize  = remotePinkyUp ? 4 : 6;
-        const needed = remotePinkyUp ? 2 : 4;
-        const stable = localPinkyHistory.slice(-wsize).filter(Boolean).length >= needed;
+        const stable = localPinkyHistory.filter(Boolean).length >= 4;
         if (stable !== localPinkyUp) {
           localPinkyUp = stable;
           sendPinkyState(localPinkyUp);
@@ -755,33 +747,21 @@ function startSharedHandDetection(localVideo, remoteVideo) {
         }
       } else {
         remotePinkyHistory.shift(); remotePinkyHistory.push(detected);
-        // If local already confirmed, only need 2/4 frames instead of 4/6
-        const wsize  = localPinkyUp ? 4 : 6;
-        const needed = localPinkyUp ? 2 : 4;
-        setRemotePinky(remotePinkyHistory.slice(-wsize).filter(Boolean).length >= needed);
+        setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
       }
 
       handsSending = false;
+      handsTurn = isLocal ? 'remote' : 'local';
     });
   }
 
-  let lastSentIsLocal = true;
-  let frameCount = 0;
-
   const loop = async () => {
     if (!handsSending) {
-      frameCount++;
-      // Local runs every frame; remote runs every other frame
-      const remoteReady = handsRemoteVideo?.srcObject && handsRemoteVideo.readyState >= 2 && !handsRemoteVideo.paused;
-      const sendLocal   = !remoteReady || (frameCount % 2 !== 0);
-      const videoEl     = sendLocal ? handsLocalVideo : handsRemoteVideo;
-      const ready       = videoEl?.srcObject && videoEl.readyState >= 2 && !videoEl.paused;
-
-      if (ready) {
-        lastSentIsLocal = sendLocal;
-        handsSending = true;
-        await sharedHands.send({ image: videoEl }).catch(() => { handsSending = false; });
-      }
+      const isLocal = (handsTurn === 'local');
+      const videoEl = isLocal ? handsLocalVideo : handsRemoteVideo;
+      const ready   = videoEl?.srcObject && videoEl.readyState >= 2 && !videoEl.paused;
+      if (!ready && !isLocal) handsTurn = 'local';
+      else if (ready) { handsSending = true; await sharedHands.send({ image: videoEl }).catch(() => { handsSending = false; }); }
     }
     handsRafId = requestAnimationFrame(loop);
   };
@@ -897,16 +877,11 @@ function drawLedTimestamp(ctx, stamp, rightX, bottomY) {
   ctx.restore();
 }
 
-function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp, scale=1, dpr=1) {
+function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp, scale=1) {
   const SIZE=240*scale, PAD=12*scale, FOOT=48*scale;
   const TW=SIZE+PAD*2, TH=SIZE+PAD+FOOT;
-  canvas.width  = TW * dpr;
-  canvas.height = TH * dpr;
-  if (dpr !== 1) { canvas.style.width = TW + 'px'; canvas.style.height = TH + 'px'; }
+  canvas.width=TW; canvas.height=TH;
   const ctx=canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
   ctx.fillStyle='#fdf6e3'; ctx.fillRect(0,0,TW,TH);
   ctx.save(); ctx.fillStyle='#000'; ctx.globalAlpha=0.07; ctx.fillRect(PAD+2,PAD+2,SIZE-4,SIZE-4); ctx.restore();
   ctx.save(); ctx.beginPath(); ctx.rect(PAD,PAD,SIZE,SIZE); ctx.clip();
@@ -951,9 +926,8 @@ function captureAndShowPhoto(remoteFrameDataUrl=null) {
     const now=new Date();
     const stamp=now.toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'2-digit'})
       +' '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-    const dpr = window.devicePixelRatio || 1;
-    drawPolaroidToCanvas(youCanvas,     lv,     'YOU',     true,  stamp, 1, dpr);
-    drawPolaroidToCanvas(partnerCanvas, remote, 'PARTNER', false, stamp, 1, dpr);
+    drawPolaroidToCanvas(youCanvas,     lv,     'YOU',     true,  stamp);
+    drawPolaroidToCanvas(partnerCanvas, remote, 'PARTNER', false, stamp);
     document.getElementById('photo-modal').classList.add('show');
   };
 
