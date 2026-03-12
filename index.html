@@ -208,12 +208,72 @@
   .confetti-particle { position: fixed; width: 8px; height: 8px; border-radius: 2px; pointer-events: none; z-index: 1001; animation: confettiFall linear forwards; }
   @keyframes confettiFall { 0% { transform:translateY(-20px) rotate(0deg); opacity:1; } 100% { transform:translateY(100vh) rotate(720deg); opacity:0; } }
 
-  #photo-modal { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: rgba(10,3,22,0.92); backdrop-filter: blur(8px); opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+  #photo-modal { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(10,3,22,0.92); backdrop-filter: blur(8px); opacity: 0; pointer-events: none; transition: opacity 0.4s; }
   #photo-modal.show { opacity: 1; pointer-events: all; }
-  .photo-card { background: var(--paper); border-radius: 4px; padding: 1.2rem 1.2rem 2rem; box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05); max-width: min(92vw,640px); width: 100%; animation: photoReveal 0.5s cubic-bezier(0.34,1.56,0.64,1); }
-  @keyframes photoReveal { from { transform:scale(0.85) rotate(-2deg); opacity:0; } to { transform:scale(1) rotate(0deg); opacity:1; } }
-  #photo-canvas { width: 100%; border-radius: 2px; display: block; }
-  .photo-caption { text-align: center; margin-top: 1rem; font-size: 0.7rem; color: var(--ink); letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.5; }
+
+  .photo-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: min(92vw, 640px);
+    gap: 0;
+  }
+
+  .polaroid-wrap {
+    background: var(--paper);
+    border-radius: 3px;
+    padding: 0.9rem 0.9rem 2.2rem;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+    width: 48%;
+    flex-shrink: 0;
+    opacity: 0;
+  }
+
+  .polaroid-wrap canvas { width: 100%; display: block; border-radius: 1px; }
+
+  .polaroid-label {
+    text-align: center;
+    margin-top: 0.6rem;
+    font-size: 0.65rem;
+    color: var(--ink);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Card fling — left card flies in from the left, spinning */
+  .polaroid-wrap.you {
+    transform-origin: center center;
+    animation: flingLeft 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
+    margin-right: -2%;
+    z-index: 1;
+  }
+
+  /* Right card flies in from right, slight delay */
+  .polaroid-wrap.partner {
+    transform-origin: center center;
+    animation: flingRight 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.25s forwards;
+    margin-left: -2%;
+    z-index: 2;
+  }
+
+  @keyframes flingLeft {
+    0%   { opacity: 0; transform: translateX(-140%) rotate(-540deg); }
+    60%  { opacity: 1; }
+    85%  { transform: translateX(3%) rotate(4deg); }
+    100% { opacity: 1; transform: translateX(0) rotate(-5deg); }
+  }
+
+  @keyframes flingRight {
+    0%   { opacity: 0; transform: translateX(140%) rotate(540deg); }
+    60%  { opacity: 1; }
+    85%  { transform: translateX(-3%) rotate(-4deg); }
+    100% { opacity: 1; transform: translateX(0) rotate(4deg); }
+  }
+
+  .photo-caption { text-align: center; margin-top: 1rem; font-size: 0.65rem; color: var(--paper); letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.4; }
   .photo-actions { display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.2rem; }
   .photo-actions .btn { font-size: 0.72rem; padding: 0.6rem 1.2rem; }
 </style>
@@ -343,13 +403,20 @@
 </div>
 
 <div id="photo-modal">
-  <div class="photo-card">
-    <canvas id="photo-canvas"></canvas>
-    <div class="photo-caption" id="photo-caption"></div>
-    <div class="photo-actions">
-      <button class="btn btn-primary" id="photo-download-btn">⬆ Share / Save</button>
-      <button class="btn btn-ghost" id="photo-close-btn">Close</button>
+  <div class="photo-stage">
+    <div class="polaroid-wrap you">
+      <canvas id="photo-canvas-you"></canvas>
+      <div class="polaroid-label">You</div>
     </div>
+    <div class="polaroid-wrap partner">
+      <canvas id="photo-canvas-partner"></canvas>
+      <div class="polaroid-label">Partner</div>
+    </div>
+  </div>
+  <div class="photo-caption" id="photo-caption"></div>
+  <div class="photo-actions">
+    <button class="btn btn-primary" id="photo-download-btn">⬆ Share / Save</button>
+    <button class="btn btn-ghost" id="photo-close-btn">Close</button>
   </div>
 </div>
 
@@ -360,7 +427,7 @@
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
 let role = null, pc = null, localStream = null, remoteStream = null, dataChannel = null;
-let localPinkyUp = false, remotePinkyUp = false, bannerShowing = false, photoShown = false;
+let localPinkyUp = false, remotePinkyUp = false, bannerShowing = false, bannerCanHide = false, photoShown = false;
 let localPinkyHistory  = Array(6).fill(false);
 let remotePinkyHistory = Array(6).fill(false);
 
@@ -723,54 +790,55 @@ function checkBothPinkies() {
 }
 
 // ── Photo ──────────────────────────────────────────────────────────────────
-function drawPolaroid(ctx, source, cx, cy, angleDeg, label, isLocal) {
-  const SIZE=260, PAD=14, FOOT=52, TW=SIZE+PAD*2, TH=SIZE+PAD+FOOT;
-  const off = document.createElement('canvas');
-  off.width=TW; off.height=TH;
-  const oc = off.getContext('2d');
-  oc.fillStyle='#fdf6e3'; oc.fillRect(0,0,TW,TH);
-  oc.save(); oc.fillStyle='#000'; oc.globalAlpha=0.08; oc.fillRect(PAD+2,PAD+2,SIZE-4,SIZE-4); oc.restore();
-  oc.save(); oc.beginPath(); oc.rect(PAD,PAD,SIZE,SIZE); oc.clip();
+
+function drawPolaroidToCanvas(canvas, source, label, isLocal) {
+  const SIZE=240, PAD=12, FOOT=48, TW=SIZE+PAD*2, TH=SIZE+PAD+FOOT;
+  canvas.width=TW; canvas.height=TH;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#fdf6e3'; ctx.fillRect(0,0,TW,TH);
+  ctx.save(); ctx.fillStyle='#000'; ctx.globalAlpha=0.07; ctx.fillRect(PAD+2,PAD+2,SIZE-4,SIZE-4); ctx.restore();
+  ctx.save(); ctx.beginPath(); ctx.rect(PAD,PAD,SIZE,SIZE); ctx.clip();
   const srcW=source.videoWidth||source.naturalWidth||source.width;
   const srcH=source.videoHeight||source.naturalHeight||source.height;
   let sw,sh,sx,sy;
   if (srcW/srcH>1) { sh=srcH; sw=srcH; sx=(srcW-sw)/2; sy=0; }
   else             { sw=srcW; sh=srcW; sx=0; sy=(srcH-sh)/4; }
-  if (isLocal) { oc.translate(PAD+SIZE,PAD); oc.scale(-1,1); oc.drawImage(source,sx,sy,sw,sh,0,0,SIZE,SIZE); }
-  else         { oc.drawImage(source,sx,sy,sw,sh,PAD,PAD,SIZE,SIZE); }
-  oc.restore();
-  oc.font='bold 13px "DM Mono",monospace'; oc.textAlign='center'; oc.fillStyle='#1a0a2e';
-  oc.fillText(label,TW/2,TH-18); oc.font='18px serif'; oc.fillText('🤙',TW/2,TH-34);
-  ctx.save(); ctx.translate(cx,cy); ctx.rotate(angleDeg*Math.PI/180);
-  ctx.shadowColor='rgba(0,0,0,0.45)'; ctx.shadowBlur=18; ctx.shadowOffsetX=4; ctx.shadowOffsetY=6;
-  ctx.drawImage(off,-TW/2,-TH/2); ctx.restore();
+  if (isLocal) { ctx.translate(PAD+SIZE,PAD); ctx.scale(-1,1); ctx.drawImage(source,sx,sy,sw,sh,0,0,SIZE,SIZE); }
+  else         { ctx.drawImage(source,sx,sy,sw,sh,PAD,PAD,SIZE,SIZE); }
+  ctx.restore();
+  ctx.font='bold 12px "DM Mono",monospace'; ctx.textAlign='center'; ctx.fillStyle='#1a0a2e';
+  ctx.fillText(label,TW/2,TH-14); ctx.font='16px serif'; ctx.fillText('🤙',TW/2,TH-30);
 }
 
 function captureAndShowPhoto(remoteFrameDataUrl=null) {
-  const lv=document.getElementById('local-video'), rv=document.getElementById('remote-video');
-  const canvas=document.getElementById('photo-canvas'), ctx=canvas.getContext('2d');
-  const CW=620, CH=520;
-  canvas.width=CW; canvas.height=CH;
+  const lv=document.getElementById('local-video');
+  const rv=document.getElementById('remote-video');
+
+  // Reset animation by re-cloning the polaroid wrappers
+  const stage = document.querySelector('.photo-stage');
+  const youWrap     = document.querySelector('.polaroid-wrap.you');
+  const partnerWrap = document.querySelector('.polaroid-wrap.partner');
+  const youClone     = youWrap.cloneNode(true);
+  const partnerClone = partnerWrap.cloneNode(true);
+  stage.replaceChild(youClone,     youWrap);
+  stage.replaceChild(partnerClone, partnerWrap);
+
+  const youCanvas     = document.getElementById('photo-canvas-you');
+  const partnerCanvas = document.getElementById('photo-canvas-partner');
 
   const render = remote => {
-    const g=ctx.createRadialGradient(CW/2,CH/2,40,CW/2,CH/2,CW*0.8);
-    g.addColorStop(0,'#2d0f3e'); g.addColorStop(1,'#0e0518');
-    ctx.fillStyle=g; ctx.fillRect(0,0,CW,CH);
-    for (let i=0;i<3000;i++) { ctx.fillStyle=`rgba(255,255,255,${Math.random()*0.025})`; ctx.fillRect(Math.random()*CW,Math.random()*CH,1,1); }
-    drawPolaroid(ctx,lv,CW*0.35,CH*0.50,-5,'YOU',true);
-    drawPolaroid(ctx,remote,CW*0.65,CH*0.48,4,'PARTNER',false);
-    ctx.save(); ctx.translate(CW/2,CH*0.88); ctx.font='bold 15px "DM Mono",monospace'; ctx.textAlign='center';
-    ctx.fillStyle='#ff4d8d'; ctx.globalAlpha=0.9; ctx.fillText('🤙  P I N K Y  S W E A R  🤙',0,0); ctx.restore();
+    drawPolaroidToCanvas(youCanvas,     lv,     'YOU',     true);
+    drawPolaroidToCanvas(partnerCanvas, remote, 'PARTNER', false);
+
     const now=new Date();
     const stamp=now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'  ·  '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-    ctx.font='11px "DM Mono",monospace'; ctx.textAlign='center'; ctx.fillStyle='rgba(245,200,66,0.55)'; ctx.globalAlpha=1;
-    ctx.fillText(stamp,CW/2,CH*0.95);
     document.getElementById('photo-caption').textContent=stamp;
     document.getElementById('photo-modal').classList.add('show');
   };
 
-  if (remoteFrameDataUrl) { const img=new Image(); img.onload=()=>render(img); img.src=remoteFrameDataUrl; }
-  else {
+  if (remoteFrameDataUrl) {
+    const img=new Image(); img.onload=()=>render(img); img.src=remoteFrameDataUrl;
+  } else {
     render(rv);
     const lc=document.createElement('canvas');
     lc.width=lv.videoWidth||640; lc.height=lv.videoHeight||480;
@@ -783,7 +851,22 @@ function captureAndShowPhoto(remoteFrameDataUrl=null) {
 function closePhotoModal() { document.getElementById('photo-modal').classList.remove('show'); photoShown=false; }
 
 async function downloadPhoto() {
-  const dataUrl=document.getElementById('photo-canvas').toDataURL('image/jpeg',0.92);
+  // Composite both polaroids onto a single canvas for sharing
+  const youCanvas     = document.getElementById('photo-canvas-you');
+  const partnerCanvas = document.getElementById('photo-canvas-partner');
+  const W = youCanvas.width + partnerCanvas.width + 40;
+  const H = Math.max(youCanvas.height, partnerCanvas.height) + 60;
+  const c = document.createElement('canvas'); c.width=W; c.height=H;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(W/2,H/2,40,W/2,H/2,W*0.8);
+  g.addColorStop(0,'#2d0f3e'); g.addColorStop(1,'#0e0518');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.save(); ctx.translate(W*0.28,H*0.48); ctx.rotate(-5*Math.PI/180); ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20; ctx.drawImage(youCanvas,-youCanvas.width/2,-youCanvas.height/2); ctx.restore();
+  ctx.save(); ctx.translate(W*0.72,H*0.48); ctx.rotate(4*Math.PI/180); ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20; ctx.drawImage(partnerCanvas,-partnerCanvas.width/2,-partnerCanvas.height/2); ctx.restore();
+  ctx.font='bold 13px "DM Mono",monospace'; ctx.textAlign='center'; ctx.fillStyle='#ff4d8d'; ctx.globalAlpha=0.9;
+  ctx.fillText('🤙  P I N K Y  S W E A R  🤙',W/2,H-12);
+
+  const dataUrl=c.toDataURL('image/jpeg',0.92);
   const blob=await (await fetch(dataUrl)).blob();
   const file=new File([blob],`pinky-swear-${Date.now()}.jpg`,{type:'image/jpeg'});
   if (navigator.canShare?.({files:[file]})) {
@@ -797,13 +880,15 @@ async function downloadPhoto() {
 function showBanner() {
   if (bannerShowing) return;
   bannerShowing=true;
+  bannerCanHide=false;
   document.getElementById('pinky-banner').classList.add('show');
   launchConfetti();
+  setTimeout(()=>{ bannerCanHide=true; }, 1500);
   if (!photoShown) { photoShown=true; setTimeout(()=>captureAndShowPhoto(),800); }
 }
 
 function hideBanner() {
-  if (!bannerShowing) return;
+  if (!bannerShowing || !bannerCanHide) return;
   bannerShowing=false;
   document.getElementById('pinky-banner').classList.remove('show');
 }
