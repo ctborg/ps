@@ -230,7 +230,12 @@
     opacity: 0;
   }
 
-  .polaroid-wrap canvas { width: 100%; display: block; border-radius: 1px; }
+  .polaroid-wrap canvas {
+    width: 100%; display: block; border-radius: 1px;
+    image-rendering: auto;
+    transform: translateZ(0);
+    will-change: transform;
+  }
 
   .polaroid-label {
     text-align: center;
@@ -260,17 +265,17 @@
   }
 
   @keyframes flingLeft {
-    0%   { opacity: 0; transform: translateX(-140%) rotate(-540deg); }
+    0%   { opacity: 0; transform: translateX(-140%) rotate(-540deg) translateZ(0); }
     60%  { opacity: 1; }
-    85%  { transform: translateX(3%) rotate(4deg); }
-    100% { opacity: 1; transform: translateX(0) rotate(-5deg); }
+    85%  { transform: translateX(3%) rotate(4deg) translateZ(0); }
+    100% { opacity: 1; transform: translateX(0) rotate(-5deg) translateZ(0); }
   }
 
   @keyframes flingRight {
-    0%   { opacity: 0; transform: translateX(140%) rotate(540deg); }
+    0%   { opacity: 0; transform: translateX(140%) rotate(540deg) translateZ(0); }
     60%  { opacity: 1; }
-    85%  { transform: translateX(-3%) rotate(-4deg); }
-    100% { opacity: 1; transform: translateX(0) rotate(4deg); }
+    85%  { transform: translateX(-3%) rotate(-4deg) translateZ(0); }
+    100% { opacity: 1; transform: translateX(0) rotate(4deg) translateZ(0); }
   }
 
   #init-codes { transition: opacity 0.8s ease, max-height 0.6s ease 0.6s, margin-top 0.6s ease 0.6s; overflow: hidden; }
@@ -892,11 +897,18 @@ function drawLedTimestamp(ctx, stamp, rightX, bottomY) {
   ctx.restore();
 }
 
-function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp, scale=1) {
+function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp, scale=1, dpr=1) {
   const SIZE=240*scale, PAD=12*scale, FOOT=48*scale;
   const TW=SIZE+PAD*2, TH=SIZE+PAD+FOOT;
-  canvas.width=TW; canvas.height=TH;
+  // Physical pixels = logical size × dpr
+  canvas.width  = TW * dpr;
+  canvas.height = TH * dpr;
+  // Keep CSS display size unchanged (logical pixels)
+  if (dpr !== 1) { canvas.style.width = TW + 'px'; canvas.style.height = TH + 'px'; }
   const ctx=canvas.getContext('2d');
+  ctx.scale(dpr, dpr); // all drawing coords stay in logical pixels
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   ctx.fillStyle='#fdf6e3'; ctx.fillRect(0,0,TW,TH);
   ctx.save(); ctx.fillStyle='#000'; ctx.globalAlpha=0.07; ctx.fillRect(PAD+2,PAD+2,SIZE-4,SIZE-4); ctx.restore();
   ctx.save(); ctx.beginPath(); ctx.rect(PAD,PAD,SIZE,SIZE); ctx.clip();
@@ -941,8 +953,9 @@ function captureAndShowPhoto(remoteFrameDataUrl=null) {
     const now=new Date();
     const stamp=now.toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'2-digit'})
       +' '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-    drawPolaroidToCanvas(youCanvas,     lv,     'YOU',     true,  stamp);
-    drawPolaroidToCanvas(partnerCanvas, remote, 'PARTNER', false, stamp);
+    const dpr = window.devicePixelRatio || 1;
+    drawPolaroidToCanvas(youCanvas,     lv,     'YOU',     true,  stamp, 1, dpr);
+    drawPolaroidToCanvas(partnerCanvas, remote, 'PARTNER', false, stamp, 1, dpr);
     document.getElementById('photo-modal').classList.add('show');
   };
 
