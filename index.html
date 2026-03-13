@@ -175,6 +175,44 @@
   .spinner { width: 32px; height: 32px; border: 2px solid rgba(255,255,255,0.1); border-top-color: var(--pink); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* ── Emoji room code ────────────────────────────────────────── */
+  .emoji-code-display {
+    display: flex; gap: 0.5rem; justify-content: center; margin: 0.75rem 0;
+  }
+  .emoji-code-slot {
+    width: 72px; height: 72px; border-radius: 16px;
+    background: rgba(245,200,66,0.08); border: 2px solid rgba(245,200,66,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.4rem; transition: all 0.2s; position: relative;
+  }
+  .emoji-code-slot.filled {
+    border-color: var(--gold); background: rgba(245,200,66,0.12);
+    box-shadow: 0 0 18px rgba(245,200,66,0.2);
+  }
+  .emoji-code-slot.empty::after {
+    content: '?'; font-size: 1.5rem; color: var(--dim);
+    font-family: 'DM Mono', monospace;
+  }
+  .emoji-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; margin: 1rem 0;
+  }
+  .emoji-btn {
+    aspect-ratio: 1; border-radius: 12px;
+    border: 2px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04);
+    font-size: 1.7rem; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .emoji-btn:active { transform: scale(0.88); background: rgba(255,77,141,0.15); border-color: var(--pink); }
+  .emoji-btn.selected { border-color: var(--pink); background: rgba(255,77,141,0.12); box-shadow: 0 0 12px rgba(255,77,141,0.3); }
+  .emoji-code-hint { font-size: 0.68rem; color: var(--dim); text-align: center; letter-spacing: 0.08em; }
+  .emoji-delete-btn {
+    background: none; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+    color: var(--dim); font-size: 0.75rem; padding: 0.4rem 0.9rem; cursor: pointer;
+    font-family: 'DM Mono', monospace; touch-action: manipulation;
+  }
+  .emoji-delete-btn:active { color: var(--pink); border-color: var(--pink); }
+
   .detection-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; margin-bottom: 0.75rem; }
   .detection-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.68rem; color: var(--dim); }
   .detection-item .led { width: 8px; height: 8px; border-radius: 50%; background: #2d1e4a; transition: all 0.3s; flex-shrink: 0; }
@@ -331,11 +369,9 @@
         <div id="init-loading-msg" style="font-size:0.75rem;color:var(--dim);">Starting camera…</div>
       </div>
       <div id="init-codes" style="display:none">
-        <label>Your Room Code — share with partner</label>
-        <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.5rem;flex-wrap:wrap;">
-          <div id="room-code-display" style="font-family:'Abril Fatface',serif;font-size:clamp(1.4rem,5vw,2rem);color:var(--gold);letter-spacing:0.05em;background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,0.2);border-radius:10px;padding:0.6rem 1.2rem;flex:1;text-align:center;"></div>
-          <button class="btn btn-ghost" onclick="copyRoomCode(this)" style="flex-shrink:0">COPY</button>
-        </div>
+        <label style="text-align:center;display:block;">Your emoji code — share these 3 with your partner</label>
+        <div class="emoji-code-display" id="room-code-display"></div>
+        <p class="emoji-code-hint">Tell them to tap the same 3 emoji in order</p>
         <div class="tip" style="margin-top:0.75rem;"><strong>📋 Waiting</strong> for your partner to enter this code and join…</div>
         <div id="init-waiting" style="margin-top:1rem;">
           <span class="status-badge status-waiting"><span class="dot"></span>Waiting for partner…</span>
@@ -348,12 +384,18 @@
       <div class="panel-title">Joining the swear</div>
       <div class="panel-sub">Step 2 — Enter the room code</div>
       <div id="joiner-input">
-        <label>Enter Room Code from partner</label>
-        <input type="text" id="room-code-input" placeholder="HAPPY-PANDA-4821"
-          style="text-transform:uppercase;letter-spacing:0.1em;font-size:1rem;text-align:center;"
-          oninput="this.value=this.value.toUpperCase()" />
-        <div class="btn-row">
-          <button class="btn btn-primary" onclick="startJoiner()">🔗 Join Room</button>
+        <label style="text-align:center;display:block;">Tap the 3 emoji your partner shared, in order</label>
+        <div class="emoji-code-display" id="joiner-emoji-display">
+          <div class="emoji-code-slot empty" id="joiner-slot-0"></div>
+          <div class="emoji-code-slot empty" id="joiner-slot-1"></div>
+          <div class="emoji-code-slot empty" id="joiner-slot-2"></div>
+        </div>
+        <div style="text-align:center;margin-bottom:0.75rem;">
+          <button class="emoji-delete-btn" onclick="emojiDelete()">⌫ undo</button>
+        </div>
+        <div class="emoji-grid" id="emoji-grid"></div>
+        <div class="btn-row" style="justify-content:center;margin-top:0.75rem;">
+          <button class="btn btn-primary" id="joiner-join-btn" onclick="startJoiner()" disabled>🔗 Join Room</button>
         </div>
       </div>
       <div id="joiner-loading" style="display:none;text-align:center;padding:1.5rem 0;">
@@ -482,7 +524,7 @@ function proceedFromRole() {
   show('panel-main');
   document.getElementById('panel-main').classList.add('active');
   show(role === 'initiator' ? 'ui-initiator' : 'ui-joiner');
-  if (role === 'joiner') setTimeout(() => document.getElementById('room-code-input').focus(), 50);
+  if (role === 'joiner') setTimeout(() => buildEmojiGrid(), 50);
 }
 
 function setStep(n) {
@@ -577,7 +619,7 @@ async function startInitiator() {
   catch(e) { alert('Signaling error: ' + e.message); show('init-pregame'); hide('init-loading'); return; }
 
   hide('init-loading');
-  document.getElementById('room-code-display').textContent = roomCode;
+  renderRoomCodeDisplay(roomCode);
   show('init-codes');
 
   try {
@@ -588,18 +630,24 @@ async function startInitiator() {
   } catch(e) { alert('Partner did not join in time: ' + e.message); }
 }
 
-function copyRoomCode(btn) {
-  navigator.clipboard.writeText(document.getElementById('room-code-display').textContent);
-  btn.textContent = 'COPIED!';
-  setTimeout(() => btn.textContent = 'COPY', 2000);
+function renderRoomCodeDisplay(emojiCode) {
+  const chars = [...new Intl.Segmenter().segment(emojiCode)].map(s => s.segment);
+  const container = document.getElementById('room-code-display');
+  container.innerHTML = '';
+  chars.forEach(em => {
+    const slot = document.createElement('div');
+    slot.className = 'emoji-code-slot filled';
+    slot.textContent = em;
+    container.appendChild(slot);
+  });
 }
 
 // ── Joiner ─────────────────────────────────────────────────────────────────
 async function startJoiner() {
-  const rawCode = document.getElementById('room-code-input').value.trim().toUpperCase();
-  if (!rawCode) return alert('Enter the room code first.');
+  const rawCode = getJoinerEmojiCode();
+  if (!rawCode) return alert('Tap 3 emoji first.');
 
-  const joinBtn = document.querySelector('#joiner-input .btn-primary');
+  const joinBtn = document.getElementById('joiner-join-btn');
   joinBtn.disabled = true;
   hide('joiner-input'); show('joiner-loading'); setMsg('joiner-loading-msg', 'Looking up room…');
 
@@ -610,7 +658,7 @@ async function startJoiner() {
     offerSdp = JSON.parse(data.offer);
   } catch(e) {
     alert('Could not find room: ' + e.message);
-    show('joiner-input'); hide('joiner-loading'); joinBtn.disabled = false; return;
+    resetJoinerEmoji(); show('joiner-input'); hide('joiner-loading'); return;
   }
 
   setMsg('joiner-loading-msg', 'Starting camera…');
@@ -618,7 +666,7 @@ async function startJoiner() {
   try { stream = await getCamera(); }
   catch(e) {
     alert('Camera error: ' + e.message);
-    show('joiner-input'); hide('joiner-loading'); joinBtn.disabled = false; return;
+    resetJoinerEmoji(); show('joiner-input'); hide('joiner-loading'); return;
   }
 
   createPC();
@@ -633,7 +681,7 @@ async function startJoiner() {
     hide('joiner-loading'); show('joiner-codes');
   } catch(e) {
     alert('Connection failed: ' + e.message);
-    show('joiner-input'); hide('joiner-loading'); joinBtn.disabled = false;
+    resetJoinerEmoji(); show('joiner-input'); hide('joiner-loading');
   }
 }
 
@@ -1091,6 +1139,68 @@ function launchConfetti() {
   }
 }
 
+// ── Emoji room code picker ────────────────────────────────────────────────
+const ROOM_EMOJI = ['🐼','🦘','🦦','🦎','🦙','🦛','🐰','🦅','🦥','🦊',
+                    '🌈','⚡','🔥','🌊','🌸','🍀','💫','🎯','🎸','🤙'];
+let joinerEmojiSeq = [];
+
+function buildEmojiGrid() {
+  const grid = document.getElementById('emoji-grid');
+  if (!grid || grid.childElementCount > 0) return;
+  ROOM_EMOJI.forEach(em => {
+    const btn = document.createElement('button');
+    btn.className = 'emoji-btn';
+    btn.textContent = em;
+    btn.dataset.emoji = em;
+    btn.addEventListener('click', () => emojiTap(em));
+    btn.addEventListener('touchend', e => { e.preventDefault(); emojiTap(em); }, { passive: false });
+    grid.appendChild(btn);
+  });
+}
+
+function emojiTap(em) {
+  if (joinerEmojiSeq.length >= 3) return;
+  joinerEmojiSeq.push(em);
+  updateJoinerEmojiUI();
+  if (joinerEmojiSeq.length === 3) {
+    document.getElementById('joiner-join-btn').disabled = false;
+    setTimeout(() => startJoiner(), 400);
+  }
+}
+
+function emojiDelete() {
+  joinerEmojiSeq.pop();
+  document.getElementById('joiner-join-btn').disabled = true;
+  updateJoinerEmojiUI();
+}
+
+function updateJoinerEmojiUI() {
+  for (let i = 0; i < 3; i++) {
+    const slot = document.getElementById(`joiner-slot-${i}`);
+    if (!slot) continue;
+    if (joinerEmojiSeq[i]) {
+      slot.textContent = joinerEmojiSeq[i];
+      slot.className = 'emoji-code-slot filled';
+    } else {
+      slot.textContent = '';
+      slot.className = 'emoji-code-slot empty';
+    }
+  }
+  document.querySelectorAll('.emoji-btn').forEach(btn => {
+    btn.classList.toggle('selected', joinerEmojiSeq.includes(btn.dataset.emoji));
+  });
+}
+
+function getJoinerEmojiCode() {
+  return joinerEmojiSeq.length === 3 ? joinerEmojiSeq.join('') : null;
+}
+
+function resetJoinerEmoji() {
+  joinerEmojiSeq = [];
+  document.getElementById('joiner-join-btn').disabled = true;
+  updateJoinerEmojiUI();
+}
+
 // ── iOS-safe tap wiring ────────────────────────────────────────────────────
 function onTap(el, fn) {
   el.addEventListener('touchend', e => { e.preventDefault(); fn(); }, { passive: false });
@@ -1098,6 +1208,7 @@ function onTap(el, fn) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  buildEmojiGrid();
   onTap(document.getElementById('btn-initiator'),      () => selectRole('initiator'));
   onTap(document.getElementById('btn-joiner'),         () => selectRole('joiner'));
   onTap(document.getElementById('role-next-btn'),      () => { if (!document.getElementById('role-next-btn').disabled) proceedFromRole(); });
