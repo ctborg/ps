@@ -319,6 +319,48 @@
     100% { opacity: 1; transform: translateX(0) rotate(4deg) translateZ(0); }
   }
 
+
+  /* ── Rotating tagline + info ── */
+  .tagline-row {
+    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    margin-top: 0.4rem; min-height: 1.4em;
+  }
+  #tagline {
+    font-size: 0.72rem; color: var(--dim); letter-spacing: 0.1em;
+    font-style: italic; opacity: 0; transition: opacity 0.6s ease;
+  }
+  #tagline.visible { opacity: 1; }
+  .info-btn {
+    background: none; border: none; color: var(--dim); font-size: 1rem;
+    cursor: pointer; padding: 0 0.2rem; line-height: 1;
+    transition: color 0.2s; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .info-btn:hover { color: var(--pink); }
+
+  .info-popover {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+    width: min(90vw, 360px);
+    background: #1e0f35; border: 1px solid rgba(255,77,141,0.25);
+    border-radius: 14px; padding: 1.2rem 1.2rem 1rem;
+    font-size: 0.72rem; color: var(--dim); line-height: 1.7;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    z-index: 500; opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    transform: translateX(-50%) translateY(8px);
+  }
+  .info-popover.show {
+    opacity: 1; pointer-events: all;
+    transform: translateX(-50%) translateY(0);
+  }
+  .info-popover-close {
+    position: absolute; top: 0.6rem; right: 0.75rem;
+    background: none; border: none; color: var(--dim);
+    font-size: 0.8rem; cursor: pointer; padding: 0.2rem;
+    touch-action: manipulation;
+  }
+  .info-popover-close:hover { color: var(--paper); }
+
   #init-codes { transition: opacity 0.8s ease, max-height 0.6s ease 0.6s, margin-top 0.6s ease 0.6s; overflow: hidden; }
 </style>
 </head>
@@ -327,7 +369,17 @@
 <header>
   <h1>Pinky <span>Swear</span></h1>
   <p>the internet's most solemn oath</p>
+  <div class="tagline-row">
+    <span id="tagline"></span>
+    <button class="info-btn" id="info-btn" aria-label="What is this?">&#9432;</button>
+  </div>
 </header>
+
+<div id="info-popover" class="info-popover" aria-hidden="true">
+  <button class="info-popover-close" id="info-popover-close">&#x2715;</button>
+  <p>Connect your camera with a friend. When you both raise your pinky finger at the same time, the app detects it and seals your oath &mdash; with confetti, a polaroid snapshot, and the full weight of internet law.</p>
+  <p style="margin-top:0.6rem;">No accounts. No server storing your video. Peer-to-peer, gone when you close the tab.</p>
+</div>
 
 <div class="steps">
   <div class="step-item"><div class="step-dot active" id="sd1">1</div><div class="step-label">Setup</div></div>
@@ -1228,6 +1280,35 @@ function resetJoinerEmoji() {
   updateJoinerEmojiUI();
 }
 
+// ── Rotating taglines ─────────────────────────────────────────────────────
+const TAGLINES = [
+  "legally unenforceable. cosmically binding.",
+  "raise your pinky. make it real.",
+  "a promise so binding, the algorithm witnessed it.",
+  "when a text just won't cut it.",
+  "for oaths that deserve more than a thumbs up.",
+  "your pinky is the witness. the camera is the notary.",
+  "the most sincere thing two people can do over wi-fi.",
+];
+let taglineIdx = 0;
+function cycleTagline() {
+  const el = document.getElementById('tagline');
+  el.classList.remove('visible');
+  setTimeout(() => {
+    taglineIdx = (taglineIdx + 1) % TAGLINES.length;
+    el.textContent = TAGLINES[taglineIdx];
+    el.classList.add('visible');
+  }, 600);
+}
+// Init first tagline immediately
+(function initTagline() {
+  const el = document.getElementById('tagline');
+  if (!el) return;
+  el.textContent = TAGLINES[0];
+  requestAnimationFrame(() => el.classList.add('visible'));
+  setInterval(cycleTagline, 4000);
+})();
+
 // ── iOS-safe tap wiring ────────────────────────────────────────────────────
 function onTap(el, fn) {
   el.addEventListener('touchend', e => { e.preventDefault(); fn(); }, { passive: false });
@@ -1241,6 +1322,18 @@ document.addEventListener('DOMContentLoaded', () => {
   onTap(document.getElementById('role-next-btn'),      () => { if (!document.getElementById('role-next-btn').disabled) proceedFromRole(); });
   onTap(document.getElementById('photo-download-btn'), downloadPhoto);
   onTap(document.getElementById('photo-close-btn'),    closePhotoModal);
+
+  // Info popover toggle
+  const infoBtn     = document.getElementById('info-btn');
+  const infoPopover = document.getElementById('info-popover');
+  const infoClose   = document.getElementById('info-popover-close');
+  const toggleInfo  = () => infoPopover.classList.toggle('show');
+  const closeInfo   = () => infoPopover.classList.remove('show');
+  onTap(infoBtn,   toggleInfo);
+  onTap(infoClose, closeInfo);
+  document.addEventListener('click', e => {
+    if (!infoPopover.contains(e.target) && e.target !== infoBtn) closeInfo();
+  });
 });
 </script>
 </body>
