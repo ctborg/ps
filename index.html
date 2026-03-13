@@ -481,7 +481,13 @@ let sharedHands = null, handsRafId = null, handsSending = false;
 let handsLocalVideo = null, handsRemoteVideo = null;
 
 const SIGNAL_URL = 'https://pinky-signal-wazbgraajq-uc.a.run.app';
-const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
+const ICE_SERVERS = { iceServers: [
+  { urls: 'stun:stun.relay.metered.ca:80' },
+  { urls: 'turn:global.relay.metered.ca:80',                username: '22ec9f08c924fe1434c061c1', credential: 'u02WgUZE7hX0eUlY' },
+  { urls: 'turn:global.relay.metered.ca:80?transport=tcp',  username: '22ec9f08c924fe1434c061c1', credential: 'u02WgUZE7hX0eUlY' },
+  { urls: 'turn:global.relay.metered.ca:443',               username: '22ec9f08c924fe1434c061c1', credential: 'u02WgUZE7hX0eUlY' },
+  { urls: 'turns:global.relay.metered.ca:443?transport=tcp',username: '22ec9f08c924fe1434c061c1', credential: 'u02WgUZE7hX0eUlY' },
+]};
 
 // ── Signaling ──────────────────────────────────────────────────────────────
 async function apiPost(path, body) {
@@ -1047,7 +1053,17 @@ function captureAndShowPhoto(remoteFrameDataUrl=null) {
   }
 }
 
-function closePhotoModal() { document.getElementById('photo-modal').classList.remove('show'); photoShown=false; }
+function closePhotoModal() {
+  document.getElementById('photo-modal').classList.remove('show');
+  document.getElementById('pinky-banner').classList.remove('show');
+  photoShown = false;
+  bannerShowing = false;
+  bannerCanHide = false;
+  frozenLocalFrame = null;
+  frozenRemoteFrame = null;
+  localPinkyHistory.fill(false);
+  remotePinkyHistory.fill(false);
+}
 
 async function downloadPhoto() {
   // Render at 3× for crisp saved image
