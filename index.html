@@ -481,13 +481,19 @@ let sharedHands = null, handsRafId = null, handsSending = false;
 let handsLocalVideo = null, handsRemoteVideo = null;
 
 const SIGNAL_URL = 'https://pinky-signal-wazbgraajq-uc.a.run.app';
-const ICE_SERVERS = { iceServers: [
-  { urls: 'stun:stun.relay.metered.ca:80' },
-  { urls: 'turn:global.relay.metered.ca:80',                username: '22ec9f08c924fe1434c061c1', credential: 'u02WgUZE7hX0eUlY' },
-  { urls: 'turn:global.relay.metered.ca:80?transport=tcp',  username: '22ec9f08c924fe1434c061c1', credential: 'u02WgUZE7hX0eUlY' },
-  { urls: 'turn:global.relay.metered.ca:443',               username: '22ec9f08c924fe1434c061c1', credential: 'u02WgUZE7hX0eUlY' },
-  { urls: 'turns:global.relay.metered.ca:443?transport=tcp',username: '22ec9f08c924fe1434c061c1', credential: 'u02WgUZE7hX0eUlY' },
-]};
+let ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }; // overwritten by loadIceConfig()
+
+async function loadIceConfig() {
+  try {
+    const data = await apiGet('/ice-config');
+    if (data.iceServers?.length) {
+      ICE_SERVERS = { iceServers: data.iceServers };
+      console.log('[ICE] loaded', data.iceServers.length, 'servers');
+    }
+  } catch(e) {
+    console.warn('[ICE] failed to load config, using STUN fallback:', e.message);
+  }
+}
 
 // ── Signaling ──────────────────────────────────────────────────────────────
 async function apiPost(path, body) {
@@ -612,6 +618,7 @@ async function startInitiator() {
   try { stream = await getCamera(); }
   catch(e) { alert('Camera error: ' + e.message); show('init-pregame'); hide('init-loading'); return; }
 
+  await loadIceConfig();
   createPC();
   dataChannel = pc.createDataChannel('pinky');
   setupDataChannel(dataChannel);
@@ -675,6 +682,7 @@ async function startJoiner() {
     resetJoinerEmoji(); show('joiner-input'); hide('joiner-loading'); return;
   }
 
+  await loadIceConfig();
   createPC();
   pc.ondatachannel = e => { dataChannel = e.channel; setupDataChannel(dataChannel); };
   stream.getTracks().forEach(t => pc.addTrack(t, stream));
