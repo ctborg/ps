@@ -291,7 +291,7 @@
 
   .polaroid-label {
     text-align: center;
-    margin-top: 0.5rem;
+    margin-top: 0.6rem;
     font-size: 0.65rem;
     color: var(--ink);
     letter-spacing: 0.2em;
@@ -837,18 +837,59 @@ async function startJoiner() {
 function setupDataChannel(dc) {
   dc.onmessage = e => {
     const msg = JSON.parse(e.data);
-    // Even though we locally process the remote pinky now, keep this as a fallback synchronization
     if (msg.type === 'pinky') {
       remotePinkyHistory.shift(); remotePinkyHistory.push(msg.up);
       setRemotePinky(remotePinkyHistory.filter(Boolean).length >= 4);
     }
-    if (msg.type === 'photo_frame') captureAndShowPhoto(msg.data);
+    // Partner fired the swear — trigger our banner too if not already shown
+    if (msg.type === 'swear_trigger') {
+      if (!photoShown) {
+        localPinkyUp = true; remotePinkyUp = true;
+        showBanner();
+      }
+    }
+    // Receive the full composite photo rendered by the other side
+    if (msg.type === 'photo_composite') {
+      receiveCompositePhoto(msg.data);
+    }
   };
   dc.bufferedAmountLowThreshold = 65536;
 }
 
 function sendPinkyState(up) {
   if (dataChannel?.readyState === 'open') dataChannel.send(JSON.stringify({ type: 'pinky', up }));
+}
+
+function sendSwearTrigger() {
+  if (dataChannel?.readyState === 'open') dataChannel.send(JSON.stringify({ type: 'swear_trigger' }));
+}
+
+// Send the full rendered composite (both polaroids on dark bg) as a single JPEG
+function sendCompositePhoto(compositeDataUrl) {
+  if (!dataChannel || dataChannel.readyState !== 'open') return;
+  // Guard 500 KB limit
+  if (compositeDataUrl.length > 512000) {
+    console.warn('[photo] composite too large to send:', compositeDataUrl.length);
+    return;
+  }
+  dataChannel.send(JSON.stringify({ type: 'photo_composite', data: compositeDataUrl }));
+}
+
+// Called on the receiving side — show the composite sent by partner
+function receiveCompositePhoto(dataUrl) {
+  if (photoShown) return; // already have our own
+  const modal = document.getElementById('photo-modal');
+  const stage = document.querySelector('.photo-stage');
+
+  // Replace the two-polaroid layout with a single full-width image
+  stage.innerHTML = `<img src="${dataUrl}" style="max-width:90vw;max-height:70vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.7);" alt="Pinky Swear photo">`;
+
+  // Hide the share/download button (they can long-press the image to save)
+  const dlBtn = document.getElementById('photo-download-btn');
+  if (dlBtn) dlBtn.style.display = 'none';
+
+  modal.classList.add('show');
+  photoShown = true;
 }
 
 // ── Neural net pinky classifier ────────────────────────────────────────────
@@ -1261,58 +1302,78 @@ function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp, scale=1, dp
   ctx.fillText(label,TW/2,TH-14*scale); ctx.font=`${16*scale}px serif`; ctx.fillText('🤙',TW/2,TH-30*scale);
 }
 
-function captureAndShowPhoto(remoteFrameDataUrl=null) {
-  const lv=document.getElementById('local-video');
-  const rv=document.getElementById('remote-video');
+function captureAndShowPhoto() {
+  const lv = document.getElementById('local-video');
+  const rv = document.getElementById('remote-video');
 
   // Reset animation by re-cloning the polaroid wrappers
-  const stage = document.querySelector('.photo-stage');
+  const stage       = document.querySelector('.photo-stage');
   const youWrap     = document.querySelector('.polaroid-wrap.you');
   const partnerWrap = document.querySelector('.polaroid-wrap.partner');
-  const youClone     = youWrap.cloneNode(true);
-  const partnerClone = partnerWrap.cloneNode(true);
-  stage.replaceChild(youClone,     youWrap);
-  stage.replaceChild(partnerClone, partnerWrap);
+  stage.replaceChild(youWrap.cloneNode(true),     youWrap);
+  stage.replaceChild(partnerWrap.cloneNode(true), partnerWrap);
 
   const youCanvas     = document.getElementById('photo-canvas-you');
   const partnerCanvas = document.getElementById('photo-canvas-partner');
 
-  const render = remote => {
-    const now=new Date();
-    const mm  = String(now.getMonth()+1).padStart(2,'0');
-    const dd  = String(now.getDate()).padStart(2,'0');
-    const yy  = String(now.getFullYear()).slice(-2);
-    const hh  = String(now.getHours()).padStart(2,'0');
-    const min = String(now.getMinutes()).padStart(2,'0');
-    const stamp = `${mm}/${dd}/${yy} ${hh}:${min}`;
-    const dpr = window.devicePixelRatio || 1;
-    // Use frozen stills — fall back to live video if not available
-    const localSrc  = frozenLocalFrame  || lv;
-    const remoteSrc = frozenRemoteFrame || remote;
-    drawPolaroidToCanvas(youCanvas,     localSrc,  'YOU',     false, stamp, 1, dpr);
-    drawPolaroidToCanvas(partnerCanvas, remoteSrc, 'PARTNER', false, stamp, 1, dpr);
-    document.getElementById('photo-modal').classList.add('show');
-  };
+  const now = new Date();
+  const mm  = String(now.getMonth()+1).padStart(2,'0');
+  const dd  = String(now.getDate()).padStart(2,'0');
+  const yy  = String(now.getFullYear()).slice(-2);
+  const hh  = String(now.getHours()).padStart(2,'0');
+  const min = String(now.getMinutes()).padStart(2,'0');
+  const stamp = `${mm}/${dd}/${yy} ${hh}:${min}`;
+  const dpr   = window.devicePixelRatio || 1;
 
-  if (remoteFrameDataUrl) {
-    const img=new Image(); img.onload=()=>render(img); img.src=remoteFrameDataUrl;
-  } else {
-    render(rv);
-    const lc=document.createElement('canvas');
-    lc.width=lv.videoWidth||640; lc.height=lv.videoHeight||480;
-    const lctx=lc.getContext('2d');
-    lctx.save(); lctx.translate(lc.width,0); lctx.scale(-1,1); lctx.drawImage(lv,0,0); lctx.restore();
-    if (dataChannel?.readyState==='open') dataChannel.send(JSON.stringify({type:'photo_frame',data:lc.toDataURL('image/jpeg',0.8)}));
-  }
+  const localSrc  = frozenLocalFrame  || lv;
+  const remoteSrc = frozenRemoteFrame || rv;
+
+  drawPolaroidToCanvas(youCanvas,     localSrc,  'YOU',     false, stamp, 1, dpr);
+  drawPolaroidToCanvas(partnerCanvas, remoteSrc, 'PARTNER', false, stamp, 1, dpr);
+  document.getElementById('photo-modal').classList.add('show');
+
+  // Build composite canvas and send to partner so they get the identical image
+  // Use a slight delay to let the canvases finish painting before reading pixels
+  setTimeout(() => {
+    try {
+      const SC = 2; // send at 2× for decent quality without blowing the DC buffer
+      const yc = document.createElement('canvas');
+      const pc = document.createElement('canvas');
+      drawPolaroidToCanvas(yc, localSrc,  'YOU',     false, stamp, SC);
+      drawPolaroidToCanvas(pc, remoteSrc, 'PARTNER', false, stamp, SC);
+
+      const W = (yc.width + pc.width) * 1.1;
+      const H = Math.max(yc.height, pc.height) * 1.25;
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const ctx = c.getContext('2d');
+      const g = ctx.createRadialGradient(W/2,H/2,40,W/2,H/2,W*0.8);
+      g.addColorStop(0,'#2d0f3e'); g.addColorStop(1,'#0e0518');
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+      const PAD = 4 * SC;
+      ctx.save(); ctx.translate(W*0.28,H*0.48); ctx.rotate(-5*Math.PI/180);
+      ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20*SC;
+      ctx.drawImage(yc,-(yc.width/2+PAD),-(yc.height/2+PAD),yc.width+PAD*2,yc.height+PAD*2); ctx.restore();
+      ctx.save(); ctx.translate(W*0.72,H*0.48); ctx.rotate(4*Math.PI/180);
+      ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=20*SC;
+      ctx.drawImage(pc,-(pc.width/2+PAD),-(pc.height/2+PAD),pc.width+PAD*2,pc.height+PAD*2); ctx.restore();
+
+      sendCompositePhoto(c.toDataURL('image/jpeg', 0.82));
+    } catch(e) {
+      console.warn('[photo] composite send failed:', e);
+    }
+  }, 100);
 }
 
 function teardownConnection() {
   stopHandDetection();
-  if (dataChannel) { try { dataChannel.close(); } catch(e) {} dataChannel = null; }
-  if (pc)          { try { pc.close();          } catch(e) {} pc = null; }
+  // Delay DC/PC close slightly so the composite photo message can flush first
+  setTimeout(() => {
+    if (dataChannel) { try { dataChannel.close(); } catch(e) {} dataChannel = null; }
+    if (pc)          { try { pc.close();          } catch(e) {} pc = null; }
+  }, 800);
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
   remoteStream = null;
-  // Blank the video elements
   ['local-video','remote-video'].forEach(id => {
     const v = document.getElementById(id);
     if (v) { v.srcObject = null; }
@@ -1767,8 +1828,9 @@ function showBanner() {
   setTimeout(() => { bannerCanHide = true; }, 1500);
   if (!photoShown) {
     photoShown = true;
-    freezeFrames();         // capture stills before tracks stop
-    teardownConnection();   // close WebRTC now — we have the frozen frames
+    freezeFrames();           // capture stills before tracks stop
+    sendSwearTrigger();       // tell partner to fire their banner too
+    teardownConnection();     // close WebRTC — we have the frozen frames
     setTimeout(() => captureAndShowPhoto(), 2000);
   }
 }
