@@ -228,7 +228,7 @@
   .video-wrap video { width: 100%; height: 100%; object-fit: cover; display: block; }
   #local-video, #local-canvas { transform: scaleX(-1); }
   .video-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .video-label { position: absolute; top: 0.2rem; bottom: 0.5rem; left: 0.5rem; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; }
+  .video-label { position: absolute; bottom: 0.5rem; left: 0.5rem; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; }
   .pinky-indicator { position: absolute; top: 0.5rem; right: 0.5rem; font-size: 1.2rem; opacity: 0.2; transition: opacity 0.3s; }
   .pinky-indicator.active { opacity: 1; filter: drop-shadow(0 0 8px var(--pink)); }
 
@@ -569,11 +569,11 @@
   <div class="photo-stage">
     <div class="polaroid-wrap you">
       <canvas id="photo-canvas-you"></canvas>
-      <div class="polaroid-label"></div>
+      <div class="polaroid-label">You</div>
     </div>
     <div class="polaroid-wrap partner">
       <canvas id="photo-canvas-partner"></canvas>
-      <div class="polaroid-label"></div>
+      <div class="polaroid-label">Partner</div>
     </div>
   </div>
   <div class="photo-actions">
@@ -1377,12 +1377,18 @@ function restartApp() {
   const share = document.getElementById('post-swear-share');
   if (share) { share.style.display = 'none'; }
 
-  // Restore panel-main (role selector)
+  // Show role selector, hide main setup panel
+  const panelRole = document.getElementById('panel-role');
+  if (panelRole) {
+    panelRole.style.cssText = '';
+    panelRole.style.display = 'block';
+    panelRole.classList.add('active');
+  }
   const panelMain = document.getElementById('panel-main');
   if (panelMain) {
-    panelMain.style.cssText = ''; // clear all inline overrides from collapse
-    panelMain.style.display = 'block';
-    panelMain.classList.add('active');
+    panelMain.style.cssText = '';
+    panelMain.style.display = 'none';
+    panelMain.classList.remove('active');
   }
 
   // Reset role UI
