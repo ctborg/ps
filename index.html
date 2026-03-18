@@ -1107,101 +1107,115 @@ const SEG7 = {
   '6':[1,0,1,1,1,1,1],'7':[1,1,1,0,0,0,0],'8':[1,1,1,1,1,1,1],
   '9':[1,1,1,1,0,1,1],':':[0,0,0,0,0,0,0],' ':[0,0,0,0,0,0,0],
   '/':[0,0,0,0,0,0,0],'-':[0,0,0,0,0,0,1],
-  'A':[1,1,1,0,1,1,1],'P':[1,1,0,0,1,1,1],'M':[1,1,1,0,1,1,0],
 };
 
 function drawDateStamp(ctx, stamp, rightX, bottomY, scale=1) {
-  const D  = 7  * scale;   // digit width
-  const H  = 12 * scale;   // digit height
-  const T  = 1.5 * scale;  // segment thickness
-  const G  = 0.6 * scale;  // gap between segment ends
-  const SP = 2  * scale;   // space between characters
-  const COLON_W = 3 * scale;
+  const DW = 8  * scale;   // digit width
+  const DH = 14 * scale;   // digit height
+  const T  = 1.8 * scale;  // segment thickness
+  const G  = 0.8 * scale;  // inset gap at segment ends (prevents overlap)
+  const SP = 2.5 * scale;  // space between characters
+  const CW = 4  * scale;   // colon / slash width
 
-  // Measure total width first
   const chars = stamp.split('');
   let totalW = 0;
-  chars.forEach(c => { totalW += (c === ':' || c === '/') ? COLON_W + SP : D + SP; });
+  chars.forEach(c => { totalW += (c === ':' || c === '/') ? CW + SP : DW + SP; });
   totalW -= SP;
 
-  const startX = rightX - totalW - 6 * scale;
-  const startY = bottomY - H - 6 * scale;
+  // Bottom-right anchor
+  let cx = rightX - totalW - 8 * scale;
+  const y0 = bottomY - DH - 8 * scale;  // top of digit cell
 
   ctx.save();
 
-  // Draw each character
-  let cx = startX;
+  // Draw a filled hexagonal segment between two points
+  // For horizontal segs: p1=(x1,y), p2=(x2,y), thickness T downward
+  // For vertical segs:   p1=(x,y1), p2=(x,y2), thickness T rightward
+  const hBar = (x1, x2, y) => {
+    ctx.beginPath();
+    ctx.moveTo(x1 + T/2,  y);
+    ctx.lineTo(x2 - T/2,  y);
+    ctx.lineTo(x2,         y + T/2);
+    ctx.lineTo(x2 - T/2,  y + T);
+    ctx.lineTo(x1 + T/2,  y + T);
+    ctx.lineTo(x1,         y + T/2);
+    ctx.closePath();
+    ctx.fill();
+  };
+  const vBar = (x, y1, y2) => {
+    ctx.beginPath();
+    ctx.moveTo(x,         y1 + T/2);
+    ctx.lineTo(x + T/2,   y1);
+    ctx.lineTo(x + T,     y1 + T/2);
+    ctx.lineTo(x + T,     y2 - T/2);
+    ctx.lineTo(x + T/2,   y2);
+    ctx.lineTo(x,         y2 - T/2);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  const seg = (on, drawFn) => {
+    ctx.globalAlpha = on ? 1.0 : 0.15;
+    ctx.fillStyle   = '#ff6000';
+    ctx.shadowColor = on ? 'rgba(255,110,0,0.85)' : 'transparent';
+    ctx.shadowBlur  = on ? 3 * scale : 0;
+    drawFn();
+    ctx.shadowBlur  = 0;
+    ctx.globalAlpha = 1.0;
+  };
+
   chars.forEach(ch => {
-    const segs = SEG7[ch] || SEG7[' '];
-    const cw   = (ch === ':' || ch === '/') ? COLON_W : D;
-    const mx   = cx + cw / 2;
-    const my   = startY + H / 2;
+    const isColon = ch === ':';
+    const isSlash = ch === '/';
+    const cw = (isColon || isSlash) ? CW : DW;
 
-    const drawSeg = (on, pathFn) => {
-      // Ghost underlay — dim unlit segments for authenticity
-      ctx.globalAlpha = on ? 1.0 : 0.18;
-      ctx.fillStyle   = on ? '#ff6600' : '#ff4400';
-      if (on) {
-        // Glow pass
-        ctx.shadowColor = 'rgba(255, 120, 0, 0.9)';
-        ctx.shadowBlur  = 3 * scale;
-      } else {
-        ctx.shadowBlur  = 0;
-      }
-      ctx.beginPath(); pathFn(); ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.globalAlpha = 1.0;
-    };
+    // Precompute all 7 segment endpoints for this cell
+    const x0 = cx;          // left edge
+    const x1 = cx + cw;     // right edge
+    const xm = cx + cw/2;   // horizontal midpoint (unused but clear)
+    const yT = y0;           // top of cell
+    const yM = y0 + DH/2;   // middle of cell
+    const yB = y0 + DH;      // bottom of cell
 
-    const hSeg = (sx, sy) => {
-      // Horizontal segment (hexagon shape)
-      const hw = cw / 2 - G;
-      ctx.moveTo(sx - hw + T/2, sy);
-      ctx.lineTo(sx + hw - T/2, sy);
-      ctx.lineTo(sx + hw,       sy + T/2);
-      ctx.lineTo(sx + hw - T/2, sy + T);
-      ctx.lineTo(sx - hw + T/2, sy + T);
-      ctx.lineTo(sx - hw,       sy + T/2);
-      ctx.closePath();
-    };
-    const vSeg = (sx, sy) => {
-      // Vertical segment
-      const hh = H / 2 - G - T/2;
-      ctx.moveTo(sx,       sy - hh + T/2);
-      ctx.lineTo(sx + T/2, sy - hh);
-      ctx.lineTo(sx + T,   sy - hh + T/2);
-      ctx.lineTo(sx + T,   sy + hh - T/2);
-      ctx.lineTo(sx + T/2, sy + hh);
-      ctx.lineTo(sx,       sy + hh - T/2);
-      ctx.closePath();
-    };
-
-    drawSeg(segs[0], () => hSeg(mx,            startY));              // top
-    drawSeg(segs[1], () => vSeg(cx + cw - T,   startY + T/2));       // top-right
-    drawSeg(segs[2], () => vSeg(cx + cw - T,   my + T/2));           // bot-right
-    drawSeg(segs[3], () => hSeg(mx,             startY + H - T));     // bottom
-    drawSeg(segs[4], () => vSeg(cx,             my + T/2));           // bot-left
-    drawSeg(segs[5], () => vSeg(cx,             startY + T/2));       // top-left
-    drawSeg(segs[6], () => hSeg(mx,             my - T/2));           // middle
-
-    // Colon dots
-    if (ch === ':') {
-      [my - H/4, my + H/4].forEach(y => {
-        ctx.globalAlpha = 1.0;
-        ctx.fillStyle = '#ff6600';
-        ctx.shadowColor = 'rgba(255,120,0,0.9)'; ctx.shadowBlur = 3 * scale;
-        ctx.beginPath(); ctx.arc(cx + COLON_W/2, y, T * 0.8, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
-      });
+    if (!isColon && !isSlash) {
+      const s = SEG7[ch] || SEG7[' '];
+      // top horizontal
+      seg(s[0], () => hBar(x0 + G, x1 - G,       yT));
+      // top-right vertical
+      seg(s[1], () => vBar(x1 - T, yT + G,        yM - G));
+      // bot-right vertical
+      seg(s[2], () => vBar(x1 - T, yM + G,        yB - G));
+      // bottom horizontal
+      seg(s[3], () => hBar(x0 + G, x1 - G,        yB - T));
+      // bot-left vertical
+      seg(s[4], () => vBar(x0,     yM + G,         yB - G));
+      // top-left vertical
+      seg(s[5], () => vBar(x0,     yT + G,         yM - G));
+      // middle horizontal
+      seg(s[6], () => hBar(x0 + G, x1 - G,         yM - T/2));
     }
-    // Slash — just a diagonal line pair
-    if (ch === '/') {
+
+    if (isColon) {
+      const dot = (y) => {
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = '#ff6000';
+        ctx.shadowColor = 'rgba(255,110,0,0.85)'; ctx.shadowBlur = 3 * scale;
+        ctx.beginPath(); ctx.arc(cx + CW/2, y, T * 0.9, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      };
+      dot(yM - DH/5);
+      dot(yM + DH/5);
+    }
+
+    if (isSlash) {
       ctx.globalAlpha = 1.0;
-      ctx.strokeStyle = '#ff6600'; ctx.lineWidth = T;
-      ctx.shadowColor = 'rgba(255,120,0,0.9)'; ctx.shadowBlur = 3 * scale;
+      ctx.strokeStyle = '#ff6000';
+      ctx.lineWidth   = T;
+      ctx.lineCap     = 'round';
+      ctx.shadowColor = 'rgba(255,110,0,0.85)'; ctx.shadowBlur = 3 * scale;
       ctx.beginPath();
-      ctx.moveTo(cx,            startY + H);
-      ctx.lineTo(cx + COLON_W,  startY);
+      ctx.moveTo(cx,        yB - G);
+      ctx.lineTo(cx + CW,   yT + G);
       ctx.stroke();
       ctx.shadowBlur = 0;
     }
