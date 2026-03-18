@@ -532,10 +532,10 @@ let localPinkyHistory  = Array(6).fill(false);
 let remotePinkyHistory = Array(6).fill(false);
 
 // Single shared MediaPipe Hands instance — avoids WASM Module collision
-// Alternates between local and remote streams every SWITCH_INTERVAL ms
+// Motion-triggered attention: pixel-diff selects which stream gets inference
 let sharedHands = null, handsRafId = null, handsSending = false;
 let handsLocalVideo = null, handsRemoteVideo = null;
-// handsActiveStream + handsSwitchTimer declared in the detection block below
+// handsActiveStream + motion state declared in the detection block below
 
 const SIGNAL_URL = 'https://pinky-signal-wazbgraajq-uc.a.run.app';
 let ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }; // overwritten by loadIceConfig()
@@ -814,21 +814,41 @@ function isPinkyUp(landmarks) {
 
 loadPinkyModel();
 
-// ── MediaPipe — single shared instance, alternating streams ───────────────
-// One stream is focused at a time; every SWITCH_INTERVAL ms we flip to the
-// other stream.  State is sticky: once a pinky is seen up it stays up until
-// the swear fires or the user lowers it (detected on the next turn for that
-// stream).  Worst-case detection latency = 2 × SWITCH_INTERVAL (~2 s), which
-// is perfectly acceptable for a "hold your pinky up" gesture.
-const SWITCH_INTERVAL = 1000; // ms between stream switches
+// ── MediaPipe — single shared instance, motion-triggered attention ────────
+// Each RAF tick we do a cheap pixel-diff on a tiny thumbnail of both streams.
+// Whichever stream has more motion wins the MediaPipe inference slot.
+// Once a pinky is confirmed up it stays up (sticky) until the swear fires or
+// detection goes cold.  No timers — the system reacts to what's actually moving.
+//
+// MOTION_W × MOTION_H  — thumbnail size for pixel-diff (kept tiny, ~0.5% of
+//   full frame pixels, so the diff costs almost nothing)
+// MOTION_STILL_FRAMES  — how many consecutive low-motion frames before we
+//   force-check the other stream anyway (prevents starvation if both are still)
+
+const MOTION_W = 32, MOTION_H = 24;
+const MOTION_STILL_FRAMES = 20; // ~330 ms at 60 fps before forced switch
 
 let handsActiveStream = 'local'; // 'local' | 'remote'
-let handsSwitchTimer  = null;
+let localStillCount   = 0;
+let remoteStillCount  = 0;
+
+// Previous thumbnail pixel data for each stream
+let prevLocalPx  = null;
+let prevRemotePx = null;
 
 function stopHandDetection() {
-  if (handsRafId)      { cancelAnimationFrame(handsRafId); handsRafId = null; }
-  if (handsSwitchTimer){ clearInterval(handsSwitchTimer);  handsSwitchTimer = null; }
+  if (handsRafId) { cancelAnimationFrame(handsRafId); handsRafId = null; }
   handsSending = false;
+  prevLocalPx = prevRemotePx = null;
+  localStillCount = remoteStillCount = 0;
+}
+
+// Returns mean absolute pixel diff (0–255) between two Uint8ClampedArrays
+function motionScore(a, b) {
+  if (!a || !b) return 255; // treat unknown as "lots of motion"
+  let sum = 0;
+  for (let i = 0; i < a.length; i += 4) sum += Math.abs(a[i] - b[i]); // R channel only
+  return sum / (a.length / 4);
 }
 
 async function refreshVideoSources() {
@@ -852,14 +872,14 @@ function startSharedHandDetection(localVideo, remoteVideo) {
   stopHandDetection();
   handsLocalVideo  = localVideo;
   handsRemoteVideo = remoteVideo;
-  handsActiveStream = 'local'; // always start on local
+  handsActiveStream = 'local';
 
   if (!sharedHands) {
     sharedHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
     sharedHands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
 
     sharedHands.onResults(results => {
-      const isLocal  = handsActiveStream === 'local';
+      const isLocal   = handsActiveStream === 'local';
       const activeVid = isLocal ? handsLocalVideo : handsRemoteVideo;
       const canvasId  = isLocal ? 'local-canvas' : 'remote-canvas';
       const canvas    = document.getElementById(canvasId);
@@ -895,24 +915,71 @@ function startSharedHandDetection(localVideo, remoteVideo) {
     });
   }
 
-  // Single 640×480 off-screen canvas (one stream at a time)
+  // Full-res canvas for MediaPipe inference (one stream at a time)
   const offCanvas = document.createElement('canvas');
   offCanvas.width  = 640;
   offCanvas.height = 480;
   const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
 
-  // Alternate which stream we inspect every SWITCH_INTERVAL ms
-  handsSwitchTimer = setInterval(() => {
-    if (!handsLocalVideo || !handsRemoteVideo) return; // only alternate once both streams exist
-    handsActiveStream = handsActiveStream === 'local' ? 'remote' : 'local';
-  }, SWITCH_INTERVAL);
+  // Tiny canvas shared for pixel-diff thumbnails
+  const thumbCanvas = document.createElement('canvas');
+  thumbCanvas.width  = MOTION_W;
+  thumbCanvas.height = MOTION_H;
+  const thumbCtx = thumbCanvas.getContext('2d', { willReadFrequently: true });
+
+  // Capture a thumbnail's pixel data from a video element; returns null if not ready
+  function grabThumb(vid) {
+    if (!vid || vid.readyState < 2 || vid.paused) return null;
+    thumbCtx.drawImage(vid, 0, 0, MOTION_W, MOTION_H);
+    return thumbCtx.getImageData(0, 0, MOTION_W, MOTION_H).data;
+  }
 
   const loop = async () => {
     if (!handsSending) {
-      const activeVid = handsActiveStream === 'local' ? handsLocalVideo : handsRemoteVideo;
-      const ready = activeVid?.readyState >= 2 && !activeVid.paused;
+      const localReady  = handsLocalVideo?.readyState  >= 2 && !handsLocalVideo.paused;
+      const remoteReady = handsRemoteVideo?.readyState >= 2 && !handsRemoteVideo.paused;
 
-      if (ready) {
+      if (localReady || remoteReady) {
+        // ── Motion scoring ──────────────────────────────────────────────────
+        const curLocalPx  = localReady  ? grabThumb(handsLocalVideo)  : null;
+        const curRemotePx = remoteReady ? grabThumb(handsRemoteVideo) : null;
+
+        const localMotion  = motionScore(prevLocalPx,  curLocalPx);
+        const remoteMotion = motionScore(prevRemotePx, curRemotePx);
+
+        prevLocalPx  = curLocalPx;
+        prevRemotePx = curRemotePx;
+
+        // Track consecutive still frames per stream
+        const LOCAL_MOTION_THRESHOLD = 2.0; // mean abs diff per pixel (R channel)
+        if (localMotion  > LOCAL_MOTION_THRESHOLD) localStillCount  = 0; else localStillCount++;
+        if (remoteMotion > LOCAL_MOTION_THRESHOLD) remoteStillCount = 0; else remoteStillCount++;
+
+        // ── Stream selection ────────────────────────────────────────────────
+        // Default: focus on whoever is moving more.
+        // Tie-break / starvation guard: if the non-active stream has been still
+        // for MOTION_STILL_FRAMES, force a check on it anyway so we never starve
+        // a user who is quietly holding their pinky up.
+        const bothReady = localReady && remoteReady;
+        if (bothReady) {
+          const otherIsLocal  = handsActiveStream === 'remote';
+          const otherIsRemote = handsActiveStream === 'local';
+          const otherStill    = otherIsLocal  ? localStillCount  >= MOTION_STILL_FRAMES
+                                              : remoteStillCount >= MOTION_STILL_FRAMES;
+
+          if (otherStill) {
+            // Force switch — other stream has been ignored long enough
+            handsActiveStream = otherIsLocal ? 'local' : 'remote';
+            localStillCount = remoteStillCount = 0;
+          } else {
+            handsActiveStream = localMotion >= remoteMotion ? 'local' : 'remote';
+          }
+        } else {
+          handsActiveStream = localReady ? 'local' : 'remote';
+        }
+
+        // ── Send to MediaPipe ───────────────────────────────────────────────
+        const activeVid = handsActiveStream === 'local' ? handsLocalVideo : handsRemoteVideo;
         offCtx.clearRect(0, 0, 640, 480);
         offCtx.drawImage(activeVid, 0, 0, 640, 480);
         handsSending = true;
