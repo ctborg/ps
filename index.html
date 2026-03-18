@@ -515,29 +515,31 @@
   <!-- VIDEO — lives outside panel-main so panel-main can collapse cleanly on connect -->
   <div class="panel" id="panel-video" style="display:none;padding:1.5rem;">
     <div id="section-video">
-      <hr class="divider">
-      <div class="connected-header">
-        <div class="panel-title" style="margin-bottom:0">You're connected!</div>
-        <span class="status-badge status-connected"><span class="dot"></span>Live</span>
-      </div>
-      <div class="panel-sub" style="margin-bottom:0.75rem;">Raise your pinky finger 🤙 to the camera</div>
-      <div class="detection-bar">
-        <div class="detection-item" id="det-local"><div class="led"></div><span>Your pinky</span></div>
-        <div class="detection-item" id="det-remote"><div class="led"></div><span>Partner's pinky</span></div>
-        <div style="margin-left:auto;font-size:0.65rem;color:var(--dim);">raise pinky toward camera</div>
-      </div>
-      <div class="video-grid" id="video-grid">
-        <div class="video-wrap">
-          <video id="local-video" autoplay muted playsinline></video>
-          <canvas id="local-canvas"></canvas>
-          <div class="video-label">You</div>
-          <div class="pinky-indicator" id="local-pinky-icon">🤙</div>
+      <div id="live-ui">
+        <hr class="divider">
+        <div class="connected-header">
+          <div class="panel-title" style="margin-bottom:0">You're connected!</div>
+          <span class="status-badge status-connected"><span class="dot"></span>Live</span>
         </div>
-        <div class="video-wrap">
-          <video id="remote-video" autoplay playsinline></video>
-          <canvas id="remote-canvas"></canvas>
-          <div class="video-label">Partner</div>
-          <div class="pinky-indicator" id="remote-pinky-icon">🤙</div>
+        <div class="panel-sub" style="margin-bottom:0.75rem;">Raise your pinky finger 🤙 to the camera</div>
+        <div class="detection-bar">
+          <div class="detection-item" id="det-local"><div class="led"></div><span>Your pinky</span></div>
+          <div class="detection-item" id="det-remote"><div class="led"></div><span>Partner's pinky</span></div>
+          <div style="margin-left:auto;font-size:0.65rem;color:var(--dim);">raise pinky toward camera</div>
+        </div>
+        <div class="video-grid" id="video-grid">
+          <div class="video-wrap">
+            <video id="local-video" autoplay muted playsinline></video>
+            <canvas id="local-canvas"></canvas>
+            <div class="video-label">You</div>
+            <div class="pinky-indicator" id="local-pinky-icon">🤙</div>
+          </div>
+          <div class="video-wrap">
+            <video id="remote-video" autoplay playsinline></video>
+            <canvas id="remote-canvas"></canvas>
+            <div class="video-label">Partner</div>
+            <div class="pinky-indicator" id="remote-pinky-icon">🤙</div>
+          </div>
         </div>
       </div>
 
@@ -1260,10 +1262,14 @@ function teardownConnection() {
     const v = document.getElementById(id);
     if (v) { v.srcObject = null; }
   });
-  // Swap video grid for share CTA
-  const grid = document.getElementById('video-grid');
-  const share = document.getElementById('post-swear-share');
-  if (grid)  { grid.style.opacity = '0'; setTimeout(() => { grid.style.display = 'none'; }, 400); }
+  // Fade out entire live UI, then show share CTA
+  const liveUI = document.getElementById('live-ui');
+  const share  = document.getElementById('post-swear-share');
+  if (liveUI) {
+    liveUI.style.transition = 'opacity 0.4s ease';
+    liveUI.style.opacity = '0';
+    setTimeout(() => { liveUI.style.display = 'none'; }, 420);
+  }
   if (share) { setTimeout(() => { share.style.display = 'block'; }, 450); }
 }
 
@@ -1295,7 +1301,6 @@ function closePhotoModal() {
   remotePinkyHistory.fill(false);
   localPinkyUp = false;
   remotePinkyUp = false;
-  teardownConnection();
 }
 
 async function downloadPhoto() {
@@ -1634,7 +1639,12 @@ function showBanner() {
   }, 1000);
 
   setTimeout(() => { bannerCanHide = true; }, 1500);
-  if (!photoShown) { photoShown = true; freezeFrames(); setTimeout(() => captureAndShowPhoto(), 2000); }
+  if (!photoShown) {
+    photoShown = true;
+    freezeFrames();         // capture stills before tracks stop
+    teardownConnection();   // close WebRTC now — we have the frozen frames
+    setTimeout(() => captureAndShowPhoto(), 2000);
+  }
 }
 
 function hideBanner() {
