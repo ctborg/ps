@@ -1099,65 +1099,115 @@ function checkBothPinkies() {
 
 // ── Photo ──────────────────────────────────────────────────────────────────
 
-function drawLedTimestamp(ctx, stamp, rightX, bottomY, scale=1) {
-  // Render at 2× internally for crispness, then draw scaled down
-  const FONT_SIZE  = 11 * scale;
-  const PAD_H      = 7  * scale;
-  const PAD_V      = 4.5 * scale;
-  const MARGIN     = 8  * scale;
+// ── 7-segment date stamp — burnt into photo like a film camera ─────────────
+// Segment bitmask order: [top, top-right, bot-right, bottom, bot-left, top-left, middle]
+const SEG7 = {
+  '0':[1,1,1,1,1,1,0],'1':[0,1,1,0,0,0,0],'2':[1,1,0,1,1,0,1],
+  '3':[1,1,1,1,0,0,1],'4':[0,1,1,0,0,1,1],'5':[1,0,1,1,0,1,1],
+  '6':[1,0,1,1,1,1,1],'7':[1,1,1,0,0,0,0],'8':[1,1,1,1,1,1,1],
+  '9':[1,1,1,1,0,1,1],':':[0,0,0,0,0,0,0],' ':[0,0,0,0,0,0,0],
+  '/':[0,0,0,0,0,0,0],'-':[0,0,0,0,0,0,1],
+  'A':[1,1,1,0,1,1,1],'P':[1,1,0,0,1,1,1],'M':[1,1,1,0,1,1,0],
+};
+
+function drawDateStamp(ctx, stamp, rightX, bottomY, scale=1) {
+  const D  = 7  * scale;   // digit width
+  const H  = 12 * scale;   // digit height
+  const T  = 1.5 * scale;  // segment thickness
+  const G  = 0.6 * scale;  // gap between segment ends
+  const SP = 2  * scale;   // space between characters
+  const COLON_W = 3 * scale;
+
+  // Measure total width first
+  const chars = stamp.split('');
+  let totalW = 0;
+  chars.forEach(c => { totalW += (c === ':' || c === '/') ? COLON_W + SP : D + SP; });
+  totalW -= SP;
+
+  const startX = rightX - totalW - 6 * scale;
+  const startY = bottomY - H - 6 * scale;
 
   ctx.save();
 
-  // Measure at render size
-  ctx.font = `600 ${FONT_SIZE}px "DM Mono", "Courier New", monospace`;
-  ctx.textBaseline = 'middle';
-  ctx.textAlign    = 'left';
-  const metrics = ctx.measureText(stamp);
-  const textW   = metrics.width;
+  // Draw each character
+  let cx = startX;
+  chars.forEach(ch => {
+    const segs = SEG7[ch] || SEG7[' '];
+    const cw   = (ch === ':' || ch === '/') ? COLON_W : D;
+    const mx   = cx + cw / 2;
+    const my   = startY + H / 2;
 
-  const pillW = textW + PAD_H * 2;
-  const pillH = FONT_SIZE + PAD_V * 2;
-  const pillX = rightX - pillW - MARGIN;
-  const pillY = bottomY - pillH - MARGIN;
-  const r     = 3 * scale; // tighter radius — more badge, less bubble
+    const drawSeg = (on, pathFn) => {
+      // Ghost underlay — dim unlit segments for authenticity
+      ctx.globalAlpha = on ? 1.0 : 0.18;
+      ctx.fillStyle   = on ? '#ff6600' : '#ff4400';
+      if (on) {
+        // Glow pass
+        ctx.shadowColor = 'rgba(255, 120, 0, 0.9)';
+        ctx.shadowBlur  = 3 * scale;
+      } else {
+        ctx.shadowBlur  = 0;
+      }
+      ctx.beginPath(); pathFn(); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1.0;
+    };
 
-  // ── Drop shadow ──────────────────────────────────────────────────────────
-  ctx.shadowColor   = 'rgba(0,0,0,0.7)';
-  ctx.shadowBlur    = 8 * scale;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 1.5 * scale;
+    const hSeg = (sx, sy) => {
+      // Horizontal segment (hexagon shape)
+      const hw = cw / 2 - G;
+      ctx.moveTo(sx - hw + T/2, sy);
+      ctx.lineTo(sx + hw - T/2, sy);
+      ctx.lineTo(sx + hw,       sy + T/2);
+      ctx.lineTo(sx + hw - T/2, sy + T);
+      ctx.lineTo(sx - hw + T/2, sy + T);
+      ctx.lineTo(sx - hw,       sy + T/2);
+      ctx.closePath();
+    };
+    const vSeg = (sx, sy) => {
+      // Vertical segment
+      const hh = H / 2 - G - T/2;
+      ctx.moveTo(sx,       sy - hh + T/2);
+      ctx.lineTo(sx + T/2, sy - hh);
+      ctx.lineTo(sx + T,   sy - hh + T/2);
+      ctx.lineTo(sx + T,   sy + hh - T/2);
+      ctx.lineTo(sx + T/2, sy + hh);
+      ctx.lineTo(sx,       sy + hh - T/2);
+      ctx.closePath();
+    };
 
-  // ── Pill background: dark translucent ───────────────────────────────────
-  ctx.fillStyle = 'rgba(6, 1, 14, 0.88)';
-  ctx.beginPath();
-  ctx.moveTo(pillX + r, pillY);
-  ctx.lineTo(pillX + pillW - r, pillY);
-  ctx.arcTo (pillX + pillW, pillY,          pillX + pillW, pillY + r,          r);
-  ctx.lineTo(pillX + pillW, pillY + pillH - r);
-  ctx.arcTo (pillX + pillW, pillY + pillH,  pillX + pillW - r, pillY + pillH,  r);
-  ctx.lineTo(pillX + r, pillY + pillH);
-  ctx.arcTo (pillX,         pillY + pillH,  pillX, pillY + pillH - r,          r);
-  ctx.lineTo(pillX, pillY + r);
-  ctx.arcTo (pillX,         pillY,          pillX + r, pillY,                  r);
-  ctx.closePath();
-  ctx.fill();
-  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    drawSeg(segs[0], () => hSeg(mx,            startY));              // top
+    drawSeg(segs[1], () => vSeg(cx + cw - T,   startY + T/2));       // top-right
+    drawSeg(segs[2], () => vSeg(cx + cw - T,   my + T/2));           // bot-right
+    drawSeg(segs[3], () => hSeg(mx,             startY + H - T));     // bottom
+    drawSeg(segs[4], () => vSeg(cx,             my + T/2));           // bot-left
+    drawSeg(segs[5], () => vSeg(cx,             startY + T/2));       // top-left
+    drawSeg(segs[6], () => hSeg(mx,             my - T/2));           // middle
 
-  // ── Thin amber border ────────────────────────────────────────────────────
-  ctx.strokeStyle = 'rgba(255, 210, 80, 0.35)';
-  ctx.lineWidth   = 0.8 * scale;
-  ctx.stroke();
+    // Colon dots
+    if (ch === ':') {
+      [my - H/4, my + H/4].forEach(y => {
+        ctx.globalAlpha = 1.0;
+        ctx.fillStyle = '#ff6600';
+        ctx.shadowColor = 'rgba(255,120,0,0.9)'; ctx.shadowBlur = 3 * scale;
+        ctx.beginPath(); ctx.arc(cx + COLON_W/2, y, T * 0.8, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+    }
+    // Slash — just a diagonal line pair
+    if (ch === '/') {
+      ctx.globalAlpha = 1.0;
+      ctx.strokeStyle = '#ff6600'; ctx.lineWidth = T;
+      ctx.shadowColor = 'rgba(255,120,0,0.9)'; ctx.shadowBlur = 3 * scale;
+      ctx.beginPath();
+      ctx.moveTo(cx,            startY + H);
+      ctx.lineTo(cx + COLON_W,  startY);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
 
-  // ── Text glow pass (amber, blurred) ─────────────────────────────────────
-  ctx.shadowColor = 'rgba(255, 220, 80, 0.55)';
-  ctx.shadowBlur  = 4 * scale;
-  ctx.fillStyle   = 'rgba(255, 235, 130, 1.0)';
-  ctx.fillText(stamp, pillX + PAD_H, pillY + pillH / 2);
-
-  // ── Crisp text pass on top (no shadow) ──────────────────────────────────
-  ctx.shadowBlur  = 0;
-  ctx.fillStyle   = 'rgba(255, 248, 200, 1.0)';
-  ctx.fillText(stamp, pillX + PAD_H, pillY + pillH / 2);
+    cx += cw + SP;
+  });
 
   ctx.restore();
 }
@@ -1183,11 +1233,11 @@ function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp, scale=1, dp
   if (isLocal) { ctx.translate(PAD+SIZE,PAD); ctx.scale(-1,1); ctx.drawImage(source,sx,sy,sw,sh,0,0,SIZE,SIZE); }
   else         { ctx.drawImage(source,sx,sy,sw,sh,PAD,PAD,SIZE,SIZE); }
 
-  // Timestamp pill
+  // Date stamp burnt into photo pixels — film camera style
   if (stamp) {
     ctx.save();
     ctx.scale(scale, scale);
-    drawLedTimestamp(ctx, stamp, (PAD+SIZE)/scale - 5, (PAD+SIZE)/scale - 6, scale);
+    drawDateStamp(ctx, stamp, (PAD+SIZE)/scale - 5, (PAD+SIZE)/scale - 6, scale);
     ctx.restore();
   }
 
@@ -1214,8 +1264,12 @@ function captureAndShowPhoto(remoteFrameDataUrl=null) {
 
   const render = remote => {
     const now=new Date();
-    const stamp=now.toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'2-digit'})
-      +' '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    const mm  = String(now.getMonth()+1).padStart(2,'0');
+    const dd  = String(now.getDate()).padStart(2,'0');
+    const yy  = String(now.getFullYear()).slice(-2);
+    const hh  = String(now.getHours()).padStart(2,'0');
+    const min = String(now.getMinutes()).padStart(2,'0');
+    const stamp = `${mm}/${dd}/${yy} ${hh}:${min}`;
     const dpr = window.devicePixelRatio || 1;
     // Use frozen stills — fall back to live video if not available
     const localSrc  = frozenLocalFrame  || lv;
@@ -1295,8 +1349,12 @@ async function downloadPhoto() {
   const lv=document.getElementById('local-video');
   const rv=document.getElementById('remote-video');
   const now=new Date();
-  const stamp=now.toLocaleDateString('en-US',{month:'numeric',day:'numeric',year:'2-digit'})
-    +' '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  const mm  = String(now.getMonth()+1).padStart(2,'0');
+  const dd  = String(now.getDate()).padStart(2,'0');
+  const yy  = String(now.getFullYear()).slice(-2);
+  const hh  = String(now.getHours()).padStart(2,'0');
+  const min = String(now.getMinutes()).padStart(2,'0');
+  const stamp = `${mm}/${dd}/${yy} ${hh}:${min}`;
 
   const yc=document.createElement('canvas');
   const pc=document.createElement('canvas');
