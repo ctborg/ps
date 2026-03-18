@@ -1099,80 +1099,66 @@ function checkBothPinkies() {
 
 // ── Photo ──────────────────────────────────────────────────────────────────
 
-// 7-segment LED timestamp renderer
-// Each digit is defined as a bitmask: segments [top, top-right, bot-right, bot, bot-left, top-left, middle]
-const SEG7 = {
-  '0':[1,1,1,1,1,1,0], '1':[0,1,1,0,0,0,0], '2':[1,1,0,1,1,0,1],
-  '3':[1,1,1,1,0,0,1], '4':[0,1,1,0,0,1,1], '5':[1,0,1,1,0,1,1],
-  '6':[1,0,1,1,1,1,1], '7':[1,1,1,0,0,0,0], '8':[1,1,1,1,1,1,1],
-  '9':[1,1,1,1,0,1,1], ':':[0,0,0,0,0,0,0], ' ':[0,0,0,0,0,0,0],
-  '/':[0,0,0,0,0,0,0], 'A':[1,1,1,0,1,1,1], 'P':[1,1,0,0,1,1,1],
-  'M':[1,1,1,0,1,1,0],
-};
+function drawLedTimestamp(ctx, stamp, rightX, bottomY, scale=1) {
+  // Render at 2× internally for crispness, then draw scaled down
+  const FONT_SIZE  = 11 * scale;
+  const PAD_H      = 7  * scale;
+  const PAD_V      = 4.5 * scale;
+  const MARGIN     = 8  * scale;
 
-function draw7seg(ctx, char, x, y, W, H, color, dimColor) {
-  const T = Math.max(1, W * 0.18); // segment thickness
-  const G = T * 0.15;              // gap between segments
-  const segs = SEG7[char] || [0,0,0,0,0,0,0];
-  const draw = (on, path) => {
-    ctx.fillStyle = on ? color : dimColor;
-    ctx.beginPath(); path(); ctx.fill();
-  };
-  const hSeg = (sx, sy, w) => {
-    const hw = w/2 - G;
-    ctx.moveTo(sx-hw+T/2, sy); ctx.lineTo(sx+hw-T/2, sy);
-    ctx.lineTo(sx+hw, sy+T/2); ctx.lineTo(sx+hw-T/2, sy+T);
-    ctx.lineTo(sx-hw+T/2, sy+T); ctx.lineTo(sx-hw, sy+T/2); ctx.closePath();
-  };
-  const vSeg = (sx, sy, h) => {
-    const hh = h/2 - G;
-    ctx.moveTo(sx, sy-hh+T/2); ctx.lineTo(sx+T/2, sy-hh);
-    ctx.lineTo(sx+T, sy-hh+T/2); ctx.lineTo(sx+T, sy+hh-T/2);
-    ctx.lineTo(sx+T/2, sy+hh); ctx.lineTo(sx, sy+hh-T/2); ctx.closePath();
-  };
-  const mx = x + W/2, my = y + H/2;
-  draw(segs[0], () => hSeg(mx, y,           W));           // top
-  draw(segs[1], () => vSeg(x+W-T, y+T/2,   H/2));         // top-right
-  draw(segs[2], () => vSeg(x+W-T, my+T/2,  H/2));         // bot-right
-  draw(segs[3], () => hSeg(mx, y+H-T,       W));           // bottom
-  draw(segs[4], () => vSeg(x,     my+T/2,   H/2));         // bot-left
-  draw(segs[5], () => vSeg(x,     y+T/2,    H/2));         // top-left
-  draw(segs[6], () => hSeg(mx, my-T/2,      W));           // middle
-}
-
-function drawLedTimestamp(ctx, stamp, rightX, bottomY) {
-  const DW=9, DH=16, GAP=2; // digit width, height, gap
-  const color    = 'rgba(255,185,40,0.95)';
-  const dimColor = 'rgba(255,185,40,0.10)';
-
-  // Measure total width
-  let totalW = 0;
-  for (const ch of stamp) {
-    totalW += (ch===':'||ch==='/'||ch===' ') ? DW*0.55 : DW;
-    totalW += GAP;
-  }
-
-  // Slight glow behind the display
   ctx.save();
-  ctx.shadowColor = 'rgba(255,150,0,0.7)';
-  ctx.shadowBlur = 8;
 
-  let cx = rightX - totalW;
-  for (const ch of stamp) {
-    const cw = (ch===':'||ch==='/'||ch===' ') ? DW*0.55 : DW;
-    if (ch === ':') {
-      // Two dots
-      ctx.fillStyle = color;
-      ctx.beginPath(); ctx.arc(cx+cw/2, bottomY-DH*0.65, 1.2, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx+cw/2, bottomY-DH*0.35, 1.2, 0, Math.PI*2); ctx.fill();
-    } else if (ch === '/') {
-      ctx.fillStyle = color;
-      ctx.beginPath(); ctx.moveTo(cx+cw*0.8,bottomY-DH); ctx.lineTo(cx+cw*0.2,bottomY); ctx.lineWidth=1.5; ctx.strokeStyle=color; ctx.stroke();
-    } else if (ch !== ' ') {
-      draw7seg(ctx, ch, cx, bottomY-DH, cw, DH, color, dimColor);
-    }
-    cx += cw + GAP;
-  }
+  // Measure at render size
+  ctx.font = `600 ${FONT_SIZE}px "DM Mono", "Courier New", monospace`;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign    = 'left';
+  const metrics = ctx.measureText(stamp);
+  const textW   = metrics.width;
+
+  const pillW = textW + PAD_H * 2;
+  const pillH = FONT_SIZE + PAD_V * 2;
+  const pillX = rightX - pillW - MARGIN;
+  const pillY = bottomY - pillH - MARGIN;
+  const r     = 3 * scale; // tighter radius — more badge, less bubble
+
+  // ── Drop shadow ──────────────────────────────────────────────────────────
+  ctx.shadowColor   = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur    = 8 * scale;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 1.5 * scale;
+
+  // ── Pill background: dark translucent ───────────────────────────────────
+  ctx.fillStyle = 'rgba(6, 1, 14, 0.88)';
+  ctx.beginPath();
+  ctx.moveTo(pillX + r, pillY);
+  ctx.lineTo(pillX + pillW - r, pillY);
+  ctx.arcTo (pillX + pillW, pillY,          pillX + pillW, pillY + r,          r);
+  ctx.lineTo(pillX + pillW, pillY + pillH - r);
+  ctx.arcTo (pillX + pillW, pillY + pillH,  pillX + pillW - r, pillY + pillH,  r);
+  ctx.lineTo(pillX + r, pillY + pillH);
+  ctx.arcTo (pillX,         pillY + pillH,  pillX, pillY + pillH - r,          r);
+  ctx.lineTo(pillX, pillY + r);
+  ctx.arcTo (pillX,         pillY,          pillX + r, pillY,                  r);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+  // ── Thin amber border ────────────────────────────────────────────────────
+  ctx.strokeStyle = 'rgba(255, 210, 80, 0.35)';
+  ctx.lineWidth   = 0.8 * scale;
+  ctx.stroke();
+
+  // ── Text glow pass (amber, blurred) ─────────────────────────────────────
+  ctx.shadowColor = 'rgba(255, 220, 80, 0.55)';
+  ctx.shadowBlur  = 4 * scale;
+  ctx.fillStyle   = 'rgba(255, 235, 130, 1.0)';
+  ctx.fillText(stamp, pillX + PAD_H, pillY + pillH / 2);
+
+  // ── Crisp text pass on top (no shadow) ──────────────────────────────────
+  ctx.shadowBlur  = 0;
+  ctx.fillStyle   = 'rgba(255, 248, 200, 1.0)';
+  ctx.fillText(stamp, pillX + PAD_H, pillY + pillH / 2);
+
   ctx.restore();
 }
 
@@ -1197,11 +1183,11 @@ function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp, scale=1, dp
   if (isLocal) { ctx.translate(PAD+SIZE,PAD); ctx.scale(-1,1); ctx.drawImage(source,sx,sy,sw,sh,0,0,SIZE,SIZE); }
   else         { ctx.drawImage(source,sx,sy,sw,sh,PAD,PAD,SIZE,SIZE); }
 
-  // 7-segment LED timestamp
+  // Timestamp pill
   if (stamp) {
     ctx.save();
     ctx.scale(scale, scale);
-    drawLedTimestamp(ctx, stamp, (PAD+SIZE)/scale - 5, (PAD+SIZE)/scale - 6);
+    drawLedTimestamp(ctx, stamp, (PAD+SIZE)/scale - 5, (PAD+SIZE)/scale - 6, scale);
     ctx.restore();
   }
 
