@@ -104,6 +104,7 @@
   .panel {
     background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
     border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem; display: none;
+    overflow: hidden;
   }
   .panel.active { display: block; animation: fadeUp 0.4s ease; }
 
@@ -510,8 +511,11 @@
       </div>
     </div>
 
-    <!-- VIDEO -->
-    <div id="section-video" style="display:none">
+  </div>
+
+  <!-- VIDEO — lives outside panel-main so panel-main can collapse cleanly on connect -->
+  <div class="panel" id="panel-video" style="display:none;padding:1.5rem;">
+    <div id="section-video">
       <hr class="divider">
       <div class="connected-header">
         <div class="panel-title" style="margin-bottom:0">You're connected!</div>
@@ -549,7 +553,7 @@
       </div>
     </div>
 
-  </div>
+  </div><!-- /panel-video -->
 </main>
 
 <div id="pinky-banner">
@@ -671,20 +675,34 @@ function showConnected() {
   connectedOnce = true;
   setStep(3);
   hide('waiting-badge');
-  show('section-video');
-  document.getElementById('section-video').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  setTimeout(() => refreshVideoSources(), 300);
-  // Subtly fade out the room code / waiting instructions
-  const initCodes = document.getElementById('init-codes');
-  if (initCodes) {
-    initCodes.style.maxHeight = initCodes.scrollHeight + 'px'; // snapshot height for transition
-    requestAnimationFrame(() => {
-      initCodes.style.opacity = '0';
-      initCodes.style.maxHeight = '0';
-      initCodes.style.marginTop = '0';
-      initCodes.style.paddingTop = '0';
-    });
+
+  // Show the video panel (now separate from panel-main)
+  const panelVideo = document.getElementById('panel-video');
+  if (panelVideo) {
+    panelVideo.style.display = 'block';
+    panelVideo.classList.add('active');
   }
+  show('section-video');
+  setTimeout(() => refreshVideoSources(), 300);
+
+  // Collapse the setup panel (titles, room codes, joiner/initiator UI) with a fade
+  const panelMain = document.getElementById('panel-main');
+  if (panelMain) {
+    panelMain.style.transition = 'opacity 0.5s ease, max-height 0.7s ease 0.3s, padding 0.7s ease 0.3s, margin 0.7s ease 0.3s';
+    panelMain.style.maxHeight  = panelMain.scrollHeight + 'px';
+    requestAnimationFrame(() => {
+      panelMain.style.opacity   = '0';
+      panelMain.style.maxHeight = '0';
+      panelMain.style.padding   = '0';
+      panelMain.style.margin    = '0';
+      panelMain.style.border    = 'none';
+    });
+    setTimeout(() => { panelMain.style.display = 'none'; }, 1200);
+  }
+
+  setTimeout(() => {
+    if (panelVideo) panelVideo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 400);
 }
 
 // ── Camera ─────────────────────────────────────────────────────────────────
