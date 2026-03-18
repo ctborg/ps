@@ -246,7 +246,7 @@
   @keyframes bounce    { from { transform:translateY(0) rotate(-10deg); } to { transform:translateY(-12px) rotate(10deg); } }
   @keyframes fadeIn    { from { opacity:0; } to { opacity:1; } }
 
-  .confetti-particle { position: fixed; width: 8px; height: 8px; border-radius: 2px; pointer-events: none; z-index: 1001; animation: confettiFall linear forwards; }
+  .confetti-particle { position: fixed; width: 8px; height: 8px; border-radius: 2px; pointer-events: none; z-index: 3000; animation: confettiFall linear forwards; }
   @keyframes confettiFall { 0% { transform:translateY(-20px) rotate(0deg); opacity:1; } 100% { transform:translateY(100vh) rotate(720deg); opacity:0; } }
 
   #photo-modal { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(10,3,22,0.92); backdrop-filter: blur(8px); opacity: 0; pointer-events: none; transition: opacity 0.4s; }
@@ -269,6 +269,13 @@
     width: 48%;
     flex-shrink: 0;
     opacity: 0;
+  }
+
+  /* Wider border on small phones — iPhone 16+ is ~390–430px wide */
+  @media (max-width: 480px) {
+    .polaroid-wrap {
+      padding: 1.3rem 1.3rem 3rem;
+    }
   }
 
   .polaroid-wrap canvas {
@@ -500,6 +507,7 @@
   <div class="banner-text">PINKY<br><span>SWEAR!</span></div>
   <div class="banner-emoji">🤙🤙</div>
   <div class="banner-sub">Your oath has been sealed · forever bound</div>
+  <div id="banner-countdown" style="font-size:clamp(0.6rem,1.5vw,0.8rem);letter-spacing:0.2em;color:var(--dim);margin-top:1rem;opacity:0;transition:opacity 0.3s;"></div>
 </div>
 
 <div id="photo-modal">
@@ -1175,9 +1183,23 @@ function captureAndShowPhoto(remoteFrameDataUrl=null) {
   }
 }
 
+function teardownConnection() {
+  stopHandDetection();
+  if (dataChannel) { try { dataChannel.close(); } catch(e) {} dataChannel = null; }
+  if (pc)          { try { pc.close();          } catch(e) {} pc = null; }
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+  remoteStream = null;
+  // Blank the video elements
+  ['local-video','remote-video'].forEach(id => {
+    const v = document.getElementById(id);
+    if (v) { v.srcObject = null; }
+  });
+}
+
 function closePhotoModal() {
   document.getElementById('photo-modal').classList.remove('show');
   document.getElementById('pinky-banner').classList.remove('show');
+  if (bannerCountdownTimer) { clearInterval(bannerCountdownTimer); bannerCountdownTimer = null; }
   photoShown = false;
   bannerShowing = false;
   bannerCanHide = false;
@@ -1185,6 +1207,9 @@ function closePhotoModal() {
   frozenRemoteFrame = null;
   localPinkyHistory.fill(false);
   remotePinkyHistory.fill(false);
+  localPinkyUp = false;
+  remotePinkyUp = false;
+  teardownConnection();
 }
 
 async function downloadPhoto() {
@@ -1248,19 +1273,39 @@ function freezeFrames() {
 }
 
 // ── Banner & confetti ──────────────────────────────────────────────────────
+let bannerCountdownTimer = null;
+
 function showBanner() {
   if (bannerShowing) return;
-  bannerShowing=true;
-  bannerCanHide=false;
+  bannerShowing = true;
+  bannerCanHide = false;
   document.getElementById('pinky-banner').classList.add('show');
   launchConfetti();
-  setTimeout(()=>{ bannerCanHide=true; }, 1500);
-  if (!photoShown) { photoShown=true; freezeFrames(); setTimeout(()=>captureAndShowPhoto(),800); }
+
+  // 2-second countdown before photo modal appears
+  const countdownEl = document.getElementById('banner-countdown');
+  let remaining = 2;
+  countdownEl.textContent = `photo in ${remaining}…`;
+  countdownEl.style.opacity = '1';
+  if (bannerCountdownTimer) clearInterval(bannerCountdownTimer);
+  bannerCountdownTimer = setInterval(() => {
+    remaining--;
+    if (remaining > 0) {
+      countdownEl.textContent = `photo in ${remaining}…`;
+    } else {
+      clearInterval(bannerCountdownTimer);
+      bannerCountdownTimer = null;
+      countdownEl.style.opacity = '0';
+    }
+  }, 1000);
+
+  setTimeout(() => { bannerCanHide = true; }, 1500);
+  if (!photoShown) { photoShown = true; freezeFrames(); setTimeout(() => captureAndShowPhoto(), 2000); }
 }
 
 function hideBanner() {
   if (!bannerShowing || !bannerCanHide) return;
-  bannerShowing=false;
+  bannerShowing = false;
   document.getElementById('pinky-banner').classList.remove('show');
 }
 
