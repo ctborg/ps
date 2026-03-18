@@ -550,6 +550,7 @@
         <div class="share-url">ctborg.github.io/ps</div>
         <div class="btn-row" style="justify-content:center;">
           <button class="btn btn-primary" id="share-site-btn" onclick="shareSite()">⬆ Share Pinky Swear</button>
+          <button class="btn btn-ghost" onclick="restartApp()">↩ New Swear</button>
         </div>
       </div>
     </div>
@@ -1110,12 +1111,12 @@ const SEG7 = {
 };
 
 function drawDateStamp(ctx, stamp, rightX, bottomY, scale=1) {
-  const DW = 8  * scale;   // digit width
-  const DH = 14 * scale;   // digit height
-  const T  = 1.8 * scale;  // segment thickness
-  const G  = 0.8 * scale;  // inset gap at segment ends (prevents overlap)
-  const SP = 2.5 * scale;  // space between characters
-  const CW = 4  * scale;   // colon / slash width
+  const DW = 7  * scale;   // digit width (reduced by 1)
+  const DH = 12 * scale;   // digit height (reduced by 1)
+  const T  = 1.6 * scale;  // segment thickness
+  const G  = 0.7 * scale;  // inset gap at segment ends
+  const SP = 2.2 * scale;  // space between characters
+  const CW = 3.5 * scale;  // colon / slash width
 
   const chars = stamp.split('');
   let totalW = 0;
@@ -1251,7 +1252,7 @@ function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp, scale=1, dp
   if (stamp) {
     ctx.save();
     ctx.scale(scale, scale);
-    drawDateStamp(ctx, stamp, (PAD+SIZE)/scale - 5, (PAD+SIZE)/scale - 6, scale);
+    drawDateStamp(ctx, stamp, (PAD+SIZE)/scale - 3, (PAD+SIZE)/scale - 3, scale);
     ctx.restore();
   }
 
@@ -1340,6 +1341,67 @@ function shareSite() {
       setTimeout(() => { btn.textContent = orig; }, 2000);
     });
   }
+}
+
+function restartApp() {
+  // Close any open modals/banners
+  document.getElementById('photo-modal').classList.remove('show');
+  document.getElementById('pinky-banner').classList.remove('show');
+  if (bannerCountdownTimer) { clearInterval(bannerCountdownTimer); bannerCountdownTimer = null; }
+
+  // Reset all state
+  role = null;
+  connectedOnce = false;
+  photoShown = false;
+  bannerShowing = false;
+  bannerCanHide = false;
+  frozenLocalFrame = null;
+  frozenRemoteFrame = null;
+  localPinkyUp = false;
+  remotePinkyUp = false;
+  localPinkyHistory.fill(false);
+  remotePinkyHistory.fill(false);
+  joinerEmojiSeq = [];
+
+  // Reset detection LEDs
+  document.getElementById('det-local').classList.remove('on');
+  document.getElementById('det-remote').classList.remove('on');
+  document.getElementById('local-pinky-icon').classList.remove('active');
+  document.getElementById('remote-pinky-icon').classList.remove('active');
+
+  // Hide video panel, restore live-ui for next session
+  const panelVideo = document.getElementById('panel-video');
+  if (panelVideo) { panelVideo.style.display = 'none'; panelVideo.classList.remove('active'); }
+  const liveUI = document.getElementById('live-ui');
+  if (liveUI) { liveUI.style.display = ''; liveUI.style.opacity = '1'; }
+  const share = document.getElementById('post-swear-share');
+  if (share) { share.style.display = 'none'; }
+
+  // Restore panel-main (role selector)
+  const panelMain = document.getElementById('panel-main');
+  if (panelMain) {
+    panelMain.style.cssText = ''; // clear all inline overrides from collapse
+    panelMain.style.display = 'block';
+    panelMain.classList.add('active');
+  }
+
+  // Reset role UI
+  hide('ui-initiator'); hide('ui-joiner');
+  hide('init-loading'); hide('init-codes');
+  show('init-pregame');
+  hide('joiner-loading'); hide('joiner-codes');
+  show('joiner-input');
+  resetJoinerEmoji();
+
+  // Reset role buttons
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('role-next-btn').disabled = true;
+
+  // Back to step 1
+  setStep(1);
+
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function closePhotoModal() {
