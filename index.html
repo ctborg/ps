@@ -1322,22 +1322,270 @@ async function downloadPhoto() {
   const a=document.createElement('a'); a.download=`pinky-swear-${Date.now()}.jpg`; a.href=dataUrl; a.click();
 }
 
+// ── WebGL Beautify Filter ──────────────────────────────────────────────────
+// Applies to frozen frames before they're drawn into the polaroid.
+// Pipeline: skin-smooth (bilateral approx) → warmth → brightness/contrast → glow blend
+//
+// All processing is done on a hidden WebGL canvas; result is read back to a
+// regular 2D canvas so the rest of the code never has to know WebGL exists.
+
+(function() {
+  const VS = `
+    attribute vec2 a_pos;
+    varying vec2 v_uv;
+    void main() {
+      v_uv = a_pos * 0.5 + 0.5;
+      // flip Y — WebGL origin is bottom-left, canvas is top-left
+      v_uv.y = 1.0 - v_uv.y;
+      gl_Position = vec4(a_pos, 0.0, 1.0);
+    }`;
+
+  // Pass 1 — separable bilateral-style smooth (horizontal)
+  const FS_BLUR_H = `
+    precision mediump float;
+    uniform sampler2D u_tex;
+    uniform vec2 u_res;
+    varying vec2 v_uv;
+    void main() {
+      vec2 px = 1.0 / u_res;
+      vec4 col = vec4(0.0);
+      float weight = 0.0;
+      vec4 center = texture2D(u_tex, v_uv);
+      float sigma_s = 3.0; float sigma_r = 0.12;
+      for (int i = -5; i <= 5; i++) {
+        vec2 off = vec2(float(i), 0.0) * px;
+        vec4 s = texture2D(u_tex, v_uv + off);
+        float gs = exp(-float(i*i) / (2.0 * sigma_s * sigma_s));
+        float gr = exp(-dot(s.rgb - center.rgb, s.rgb - center.rgb) / (2.0 * sigma_r * sigma_r));
+        float w = gs * gr;
+        col += s * w; weight += w;
+      }
+      gl_FragColor = col / weight;
+    }`;
+
+  // Pass 2 — vertical blur
+  const FS_BLUR_V = `
+    precision mediump float;
+    uniform sampler2D u_tex;
+    uniform vec2 u_res;
+    varying vec2 v_uv;
+    void main() {
+      vec2 px = 1.0 / u_res;
+      vec4 col = vec4(0.0);
+      float weight = 0.0;
+      vec4 center = texture2D(u_tex, v_uv);
+      float sigma_s = 3.0; float sigma_r = 0.12;
+      for (int i = -5; i <= 5; i++) {
+        vec2 off = vec2(0.0, float(i)) * px;
+        vec4 s = texture2D(u_tex, v_uv + off);
+        float gs = exp(-float(i*i) / (2.0 * sigma_s * sigma_s));
+        float gr = exp(-dot(s.rgb - center.rgb, s.rgb - center.rgb) / (2.0 * sigma_r * sigma_r));
+        float w = gs * gr;
+        col += s * w; weight += w;
+      }
+      gl_FragColor = col / weight;
+    }`;
+
+  // Pass 3 — composite: blend smooth over original, add warmth, brightness, glow
+  const FS_COMPOSITE = `
+    precision mediump float;
+    uniform sampler2D u_original;
+    uniform sampler2D u_smooth;
+    uniform vec2 u_res;
+    varying vec2 v_uv;
+
+    vec3 adjustBrightness(vec3 c, float b) { return clamp(c + b, 0.0, 1.0); }
+    vec3 adjustContrast(vec3 c, float co) {
+      return clamp((c - 0.5) * co + 0.5, 0.0, 1.0);
+    }
+    vec3 adjustSaturation(vec3 c, float s) {
+      float lum = dot(c, vec3(0.299, 0.587, 0.114));
+      return clamp(mix(vec3(lum), c, s), 0.0, 1.0);
+    }
+
+    void main() {
+      vec4 orig   = texture2D(u_original, v_uv);
+      vec4 smooth = texture2D(u_smooth,   v_uv);
+
+      // Blend: use smooth where skin-toned (warm mid-range), keep detail elsewhere
+      float skin = smoothstep(0.25, 0.75, orig.r) * smoothstep(0.0, 0.5, orig.g) * (1.0 - smoothstep(0.1, 0.5, orig.b));
+      float blend = clamp(skin * 0.72, 0.0, 1.0);
+      vec3 col = mix(orig.rgb, smooth.rgb, blend);
+
+      // Warmth — nudge red up, blue down slightly
+      col.r = clamp(col.r + 0.045, 0.0, 1.0);
+      col.b = clamp(col.b - 0.025, 0.0, 1.0);
+
+      // Brightness lift in midtones (gamma-style)
+      col = pow(col, vec3(0.92));
+
+      // Contrast
+      col = adjustContrast(col, 1.06);
+
+      // Saturation boost
+      col = adjustSaturation(col, 1.15);
+
+      // Soft glow: sample a cheap 3×3 blur of the brightened image
+      vec2 px = 1.0 / u_res;
+      vec3 glow = vec3(0.0);
+      for (int x = -1; x <= 1; x++) {
+        for (int y = -1; y <= 1; y++) {
+          vec3 tap = texture2D(u_smooth, v_uv + vec2(float(x), float(y)) * px * 4.0).rgb;
+          glow += pow(clamp(tap, 0.0, 1.0), vec3(0.85));
+        }
+      }
+      glow /= 9.0;
+      // Add glow only where bright
+      float glowMask = smoothstep(0.45, 0.9, dot(col, vec3(0.299, 0.587, 0.114)));
+      col = mix(col, col + glow * 0.12, glowMask);
+
+      gl_FragColor = vec4(clamp(col, 0.0, 1.0), orig.a);
+    }`;
+
+  function makeShader(gl, type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+      console.warn('Shader compile error:', gl.getShaderInfoLog(s));
+      return null;
+    }
+    return s;
+  }
+
+  function makeProgram(gl, vsSrc, fsSrc) {
+    const vs = makeShader(gl, gl.VERTEX_SHADER, vsSrc);
+    const fs = makeShader(gl, gl.FRAGMENT_SHADER, fsSrc);
+    if (!vs || !fs) return null;
+    const p = gl.createProgram();
+    gl.attachShader(p, vs); gl.attachShader(p, fs); gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      console.warn('Program link error:', gl.getProgramInfoLog(p));
+      return null;
+    }
+    return p;
+  }
+
+  function makeTexture(gl, w, h, data) {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    if (data) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    else      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    return t;
+  }
+
+  function makeFBO(gl, tex) {
+    const fb = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return fb;
+  }
+
+  // Shared GL context — created once, resized as needed
+  let _gl = null, _glCanvas = null;
+  let _progBlurH = null, _progBlurV = null, _progComposite = null;
+  let _quad = null;
+
+  function ensureGL() {
+    if (_gl) return _gl;
+    _glCanvas = document.createElement('canvas');
+    _gl = _glCanvas.getContext('webgl', { preserveDrawingBuffer: true, antialias: false });
+    if (!_gl) { console.warn('WebGL not available; skipping beautify filter'); return null; }
+
+    _progBlurH    = makeProgram(_gl, VS, FS_BLUR_H);
+    _progBlurV    = makeProgram(_gl, VS, FS_BLUR_V);
+    _progComposite = makeProgram(_gl, VS, FS_COMPOSITE);
+
+    _quad = _gl.createBuffer();
+    _gl.bindBuffer(_gl.ARRAY_BUFFER, _quad);
+    _gl.bufferData(_gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), _gl.STATIC_DRAW);
+    return _gl;
+  }
+
+  function drawQuad(gl, prog, uniforms) {
+    gl.useProgram(prog);
+    gl.bindBuffer(gl.ARRAY_BUFFER, _quad);
+    const loc = gl.getAttribLocation(prog, 'a_pos');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    for (const [name, val] of Object.entries(uniforms)) {
+      const u = gl.getUniformLocation(prog, name);
+      if (Array.isArray(val)) gl.uniform2fv(u, val);
+      else { gl.uniform1i(u, val); }
+    }
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  // Public — takes a canvas (the frozen frame), returns a new beautified canvas
+  window.applyBeautifyFilter = function(srcCanvas) {
+    const gl = ensureGL();
+    if (!gl) return srcCanvas; // graceful fallback
+
+    const W = srcCanvas.width, H = srcCanvas.height;
+    _glCanvas.width = W; _glCanvas.height = H;
+    gl.viewport(0, 0, W, H);
+
+    // Upload original
+    const texOrig = makeTexture(gl, W, H, srcCanvas);
+
+    // Ping-pong textures for blur passes
+    const texA = makeTexture(gl, W, H, null);
+    const texB = makeTexture(gl, W, H, null);
+    const fboA = makeFBO(gl, texA);
+    const fboB = makeFBO(gl, texB);
+
+    // Pass 1: horizontal blur → fboA
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fboA);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texOrig);
+    drawQuad(gl, _progBlurH, { u_tex: 0, u_res: [W, H] });
+
+    // Pass 2: vertical blur → fboB
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fboB);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texA);
+    drawQuad(gl, _progBlurV, { u_tex: 0, u_res: [W, H] });
+
+    // Pass 3: composite to screen
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texOrig);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texB);
+    drawQuad(gl, _progComposite, { u_original: 0, u_smooth: 1, u_res: [W, H] });
+
+    // Read result back to a regular 2D canvas
+    const out = document.createElement('canvas');
+    out.width = W; out.height = H;
+    out.getContext('2d').drawImage(_glCanvas, 0, 0);
+
+    // Clean up GL objects
+    [texOrig, texA, texB].forEach(t => gl.deleteTexture(t));
+    [fboA, fboB].forEach(f => gl.deleteFramebuffer(f));
+
+    return out;
+  };
+})();
+
 function freezeFrames() {
   const lv = document.getElementById('local-video');
   const rv = document.getElementById('remote-video');
   // Capture local (mirrored)
-  frozenLocalFrame = document.createElement('canvas');
-  frozenLocalFrame.width  = lv.videoWidth  || 640;
-  frozenLocalFrame.height = lv.videoHeight || 480;
-  const lctx = frozenLocalFrame.getContext('2d');
-  lctx.save(); lctx.translate(frozenLocalFrame.width, 0); lctx.scale(-1, 1);
+  let localRaw = document.createElement('canvas');
+  localRaw.width  = lv.videoWidth  || 640;
+  localRaw.height = lv.videoHeight || 480;
+  const lctx = localRaw.getContext('2d');
+  lctx.save(); lctx.translate(localRaw.width, 0); lctx.scale(-1, 1);
   lctx.drawImage(lv, 0, 0); lctx.restore();
+  frozenLocalFrame = applyBeautifyFilter(localRaw);
+
   // Capture remote
   if (rv.srcObject && rv.videoWidth) {
-    frozenRemoteFrame = document.createElement('canvas');
-    frozenRemoteFrame.width  = rv.videoWidth;
-    frozenRemoteFrame.height = rv.videoHeight;
-    frozenRemoteFrame.getContext('2d').drawImage(rv, 0, 0);
+    let remoteRaw = document.createElement('canvas');
+    remoteRaw.width  = rv.videoWidth;
+    remoteRaw.height = rv.videoHeight;
+    remoteRaw.getContext('2d').drawImage(rv, 0, 0);
+    frozenRemoteFrame = applyBeautifyFilter(remoteRaw);
   }
 }
 
