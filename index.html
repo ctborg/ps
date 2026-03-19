@@ -569,11 +569,11 @@
   <div class="photo-stage">
     <div class="polaroid-wrap you">
       <canvas id="photo-canvas-you"></canvas>
-      <div class="polaroid-label"></div>
+      <div class="polaroid-label">You</div>
     </div>
     <div class="polaroid-wrap partner">
       <canvas id="photo-canvas-partner"></canvas>
-      <div class="polaroid-label"></div>
+      <div class="polaroid-label">Partner</div>
     </div>
   </div>
   <div class="photo-actions">
@@ -1289,15 +1289,15 @@ function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp, scale=1, dp
   if (isLocal) { ctx.translate(PAD+SIZE,PAD); ctx.scale(-1,1); ctx.drawImage(source,sx,sy,sw,sh,0,0,SIZE,SIZE); }
   else         { ctx.drawImage(source,sx,sy,sw,sh,PAD,PAD,SIZE,SIZE); }
 
-  // Date stamp burnt into photo pixels — film camera style
+  // Date stamp burnt into photo pixels — always at a fixed visual size.
+  // Draw after restoring the clip so we're back in dpr-scaled canvas space.
   if (stamp) {
-    ctx.save();
-    ctx.scale(scale, scale);
-    drawDateStamp(ctx, stamp, (PAD+SIZE)/scale - 3, (PAD+SIZE)/scale - 3, scale);
+    ctx.restore(); // pop clip
+    // Stamp anchor: bottom-right corner of the image area (in scaled coords)
+    drawDateStamp(ctx, stamp, PAD + SIZE - 3, PAD + SIZE - 3, scale);
+  } else {
     ctx.restore();
   }
-
-  ctx.restore();
   ctx.font=`bold ${12*scale}px "DM Mono",monospace`; ctx.textAlign='center'; ctx.fillStyle='#1a0a2e';
   ctx.fillText(label,TW/2,TH-14*scale); ctx.font=`${16*scale}px serif`; ctx.fillText('🤙',TW/2,TH-30*scale);
 }
@@ -1328,7 +1328,7 @@ function captureAndShowPhoto() {
   const localSrc  = frozenLocalFrame  || lv;
   const remoteSrc = frozenRemoteFrame || rv;
 
-  drawPolaroidToCanvas(youCanvas,     localSrc,  'YOU',     false, stamp, 1, dpr);
+  drawPolaroidToCanvas(youCanvas,     localSrc,  'YOU',     true,  stamp, 1, dpr);
   drawPolaroidToCanvas(partnerCanvas, remoteSrc, 'PARTNER', false, stamp, 1, dpr);
   document.getElementById('photo-modal').classList.add('show');
 
@@ -1339,7 +1339,7 @@ function captureAndShowPhoto() {
       const SC = 2; // send at 2× for decent quality without blowing the DC buffer
       const yc = document.createElement('canvas');
       const pc = document.createElement('canvas');
-      drawPolaroidToCanvas(yc, localSrc,  'YOU',     false, stamp, SC);
+      drawPolaroidToCanvas(yc, localSrc,  'YOU',     true,  stamp, SC);
       drawPolaroidToCanvas(pc, remoteSrc, 'PARTNER', false, stamp, SC);
 
       const W = (yc.width + pc.width) * 1.1;
@@ -1504,7 +1504,7 @@ async function downloadPhoto() {
   // Use frozen stills captured at swear moment — fall back to live video if unavailable
   const localSrc  = frozenLocalFrame  || lv;
   const remoteSrc = frozenRemoteFrame || (rv.srcObject ? rv : document.getElementById('photo-canvas-partner'));
-  drawPolaroidToCanvas(yc, localSrc,  'YOU',     false, stamp, SC);
+  drawPolaroidToCanvas(yc, localSrc,  'YOU',     true,  stamp, SC);
   drawPolaroidToCanvas(pc, remoteSrc, 'PARTNER', false, stamp, SC);
 
   const W=(yc.width+pc.width)*1.1, H=Math.max(yc.height,pc.height)*1.25;
