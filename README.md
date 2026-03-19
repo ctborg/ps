@@ -99,17 +99,18 @@ node index.js
 Env vars:
 
 ```
-METERED_TURN_USER=...        # Metered TURN username
-METERED_TURN_CREDENTIAL=...  # Metered TURN credential
-CLEANUP_TOKEN=...             # Secret token for POST /cleanup
-PORT=8080                     # Optional, defaults to 8080
+ALLOWED_ORIGIN=https://your-frontend-url   # required — CORS allowed origin
+METERED_TURN_USER=...                       # Metered TURN username
+METERED_TURN_CREDENTIAL=...                 # Metered TURN credential
+CLEANUP_TOKEN=...                           # Secret token for POST /cleanup
+PORT=8080                                   # Optional, defaults to 8080
 ```
 
 **Never commit credentials.** Set them via:
 
 ```bash
 gcloud run services update pinky-signal \
-  --set-env-vars METERED_TURN_USER=...,METERED_TURN_CREDENTIAL=...,CLEANUP_TOKEN=...
+  --set-env-vars ALLOWED_ORIGIN=https://your-frontend-url,METERED_TURN_USER=...,METERED_TURN_CREDENTIAL=...,CLEANUP_TOKEN=...
 ```
 
 ### Deploying to Cloud Run
