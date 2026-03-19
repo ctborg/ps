@@ -1,0 +1,40 @@
+// firestore.rules — deployed via: gcloud firestore rules deploy firestore.rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /pinky-rooms/{roomCode} {
+
+      // Reads allowed — needed for offer/answer exchange.
+      // Direct client reads are fine; sensitive data (SDP) is short-lived.
+      allow read: if true;
+
+      // Create: must have exactly the right fields, correct types, sane sizes,
+      // answer must be null, and expiry must be within 15 minutes of now.
+      allow create: if request.resource.data.keys().hasAll(['offer','createdAt','expiresAt','answer'])
+                    && request.resource.data.keys().hasOnly(['offer','createdAt','expiresAt','answer'])
+                    && request.resource.data.offer is string
+                    && request.resource.data.offer.size() > 0
+                    && request.resource.data.offer.size() < 32768  // 32KB max
+                    && request.resource.data.answer == null
+                    && request.resource.data.createdAt is int
+                    && request.resource.data.expiresAt is int
+                    && request.resource.data.expiresAt <= request.time.toMillis() + 15 * 60 * 1000
+                    && request.resource.data.expiresAt > request.time.toMillis();
+
+      // Update: only the answer + joinedAt fields may be written,
+      // answer must be a non-empty string under 32KB,
+      // and can only be set once (resource.data.answer must be null).
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['answer', 'joinedAt'])
+                    && resource.data.answer == null
+                    && request.resource.data.answer is string
+                    && request.resource.data.answer.size() > 0
+                    && request.resource.data.answer.size() < 32768
+                    && request.resource.data.joinedAt is int;
+
+      // Deletes are server-side only (Cloud Run service account).
+      // Denying direct client deletes means a client can't kill an active session.
+      allow delete: if false;
+    }
+  }
+}
