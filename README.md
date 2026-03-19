@@ -39,7 +39,7 @@ A single self-contained HTML file. No build step, no dependencies to install.
 
 **Swear trigger sync** — whoever detects the swear first sends a `swear_trigger` DataChannel message to the other party, forcing their banner and photo even if their local pinky detection is a frame behind. This prevents one side getting a photo and the other getting nothing.
 
-### Backend (`/`)
+### Backend (`/index.js`)
 
 A minimal [Express](https://expressjs.com/) + [Firestore](https://firebase.google.com/docs/firestore) signaling server deployed on [Google Cloud Run](https://cloud.google.com/run). It only brokers the initial WebRTC handshake — no video ever touches it.
 
