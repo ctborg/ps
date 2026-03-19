@@ -39,7 +39,7 @@ A single self-contained HTML file. No build step, no dependencies to install.
 
 **Swear trigger sync** — whoever detects the swear first sends a `swear_trigger` DataChannel message to the other party, forcing their banner and photo even if their local pinky detection is a frame behind. This prevents one side getting a photo and the other getting nothing.
 
-### Backend (`pinky-signal/`)
+### Backend (`/`)
 
 A minimal [Express](https://expressjs.com/) + [Firestore](https://firebase.google.com/docs/firestore) signaling server deployed on [Google Cloud Run](https://cloud.google.com/run). It only brokers the initial WebRTC handshake — no video ever touches it.
 
@@ -90,8 +90,7 @@ Point `SIGNAL_URL` in `index.html` to your local or deployed backend.
 
 ### Backend
 
-```bash
-cd pinky-signal
+```bas
 npm install
 node index.js
 ```
@@ -162,7 +161,7 @@ firebase deploy --only firestore:rules
 - Emoji room code validation on all endpoints — prevents path traversal
 - 40KB Express body limit
 - `POST /cleanup` requires `X-Cleanup-Token` header with timing-safe comparison; wrong token incurs a 500ms delay to slow brute-force
-- CORS locked to `https://ctborg.github.io`
+- CORS locked to ALLOWED_ORIGIN env var
 - Security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Powered-By` removed
 - Firestore `delete: if false` — rooms can only be deleted server-side via the service account
 - Firestore update rules prevent overwriting an existing answer (no session hijacking)
