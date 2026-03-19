@@ -1,0 +1,19 @@
+{
+  "name": "pinky-swear-signal",
+  "version": "1.0.0",
+  "description": "Lightweight WebRTC signaling server for Pinky Swear",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^7.0.0",
+    "cors": "^2.8.5",
+    "express": "^5.0.0"
+  }
+}
