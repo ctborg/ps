@@ -569,11 +569,9 @@
   <div class="photo-stage">
     <div class="polaroid-wrap you">
       <canvas id="photo-canvas-you"></canvas>
-      <div class="polaroid-label">You</div>
     </div>
     <div class="polaroid-wrap partner">
       <canvas id="photo-canvas-partner"></canvas>
-      <div class="polaroid-label">Partner</div>
     </div>
   </div>
   <div class="photo-actions">
@@ -1302,6 +1300,56 @@ function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp, scale=1, dp
   ctx.fillText(label,TW/2,TH-14*scale); ctx.font=`${16*scale}px serif`; ctx.fillText('🤙',TW/2,TH-30*scale);
 }
 
+// ── Polaroid develop animation ─────────────────────────────────────────────
+// Overlays a canvas with a dark greenish-brown "undeveloped" tint that lifts
+// over durationMs to reveal the image. Mimics the chemical development look
+// of a real Polaroid — dark emerges to colour with an ease-out curve.
+function developCanvas(canvas, durationMs) {
+  const ctx   = canvas.getContext('2d');
+  const W     = canvas.width;
+  const H     = canvas.height;
+  const start = performance.now();
+
+  // Undeveloped colour: very dark olive-brown, like unexposed film
+  // RGB: 18, 14, 10 — nearly black with a warm chemical tint
+  const R0 = 18, G0 = 14, B0 = 10;
+
+  // Capture the fully-rendered image once before we start painting over it
+  const imageData = ctx.getImageData(0, 0, W, H);
+
+  const tick = (now) => {
+    const elapsed  = now - start;
+    const linear   = Math.min(elapsed / durationMs, 1);
+    // Ease-out cubic: fast reveal at start, settles gently at end
+    const t        = 1 - Math.pow(1 - linear, 3);
+    const overlay  = 1 - t; // opacity of the dark overlay (1→0)
+
+    // Restore the clean rendered frame each tick
+    ctx.putImageData(imageData, 0, 0);
+
+    if (overlay > 0.002) {
+      // Dark chemical overlay — fades out as image develops
+      ctx.save();
+      ctx.globalAlpha = overlay;
+      ctx.fillStyle = `rgb(${R0},${G0},${B0})`;
+      ctx.fillRect(0, 0, W, H);
+
+      // Add a subtle green-tinted sheen at the start (undeveloped silver halide)
+      if (overlay > 0.3) {
+        ctx.globalAlpha = (overlay - 0.3) * 0.25;
+        ctx.fillStyle = 'rgb(30, 42, 20)';
+        ctx.fillRect(0, 0, W, H);
+      }
+      ctx.restore();
+
+      requestAnimationFrame(tick);
+    }
+    // Done — clean frame is already restored via putImageData above
+  };
+
+  requestAnimationFrame(tick);
+}
+
 function captureAndShowPhoto() {
   const lv = document.getElementById('local-video');
   const rv = document.getElementById('remote-video');
@@ -1332,11 +1380,18 @@ function captureAndShowPhoto() {
   drawPolaroidToCanvas(partnerCanvas, remoteSrc, 'PARTNER', false, stamp, 1, dpr);
   document.getElementById('photo-modal').classList.add('show');
 
-  // Build composite canvas and send to partner so they get the identical image
-  // Use a slight delay to let the canvases finish painting before reading pixels
+  // ── Polaroid develop animation ─────────────────────────────────────────
+  // Overlays a dark "undeveloped chemical" layer on each photo canvas that
+  // lifts to reveal the image over DEVELOP_MS milliseconds.
+  // Uses an ease-out curve so the image emerges quickly then settles.
+  const DEVELOP_MS = 2200;
+  [youCanvas, partnerCanvas].forEach(canvas => developCanvas(canvas, DEVELOP_MS));
+
+  // Build composite canvas and send to partner so they get the identical image.
+  // Delay until after develop animation so the sent image is the final result.
   setTimeout(() => {
     try {
-      const SC = 2; // send at 2× for decent quality without blowing the DC buffer
+      const SC = 2;
       const yc = document.createElement('canvas');
       const pc = document.createElement('canvas');
       drawPolaroidToCanvas(yc, localSrc,  'YOU',     true,  stamp, SC);
@@ -1362,7 +1417,7 @@ function captureAndShowPhoto() {
     } catch(e) {
       console.warn('[photo] composite send failed:', e);
     }
-  }, 100);
+  }, DEVELOP_MS + 200);
 }
 
 function teardownConnection() {
