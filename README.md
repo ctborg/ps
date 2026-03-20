@@ -4,7 +4,7 @@
 
 A peer-to-peer video app for making promises that actually mean something. When both parties raise their pinky fingers at the same time, the app detects it and seals the oath — with confetti, a polaroid snapshot, and the full weight of internet law.
 
-**[Live demo → ctborg.github.io/ps](https://ctborg.github.io/ps/)**
+**[Live demo → pinkyswear.fyi](https://pinkyswear.fyi)**
 
 ---
 
