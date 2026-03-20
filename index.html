@@ -1300,51 +1300,195 @@ function drawPolaroidToCanvas(canvas, source, label, isLocal, stamp, scale=1, dp
   ctx.fillText(label,TW/2,TH-14*scale); ctx.font=`${16*scale}px serif`; ctx.fillText('🤙',TW/2,TH-30*scale);
 }
 
+// ── Web Audio ──────────────────────────────────────────────────────────────
+// All sounds synthesised procedurally — no audio files needed.
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _audioCtx;
+}
+
+// Camera shutter: mechanical click + flashbulb burst
+function playShutter() {
+  try {
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+
+    // ── Mechanical click — short noise burst shaped like a shutter blade ──
+    const clickBuf = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
+    const cd = clickBuf.getChannelData(0);
+    for (let i = 0; i < cd.length; i++) {
+      // Sharp attack, fast exponential decay
+      cd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.008));
+    }
+    const click = ctx.createBufferSource();
+    click.buffer = clickBuf;
+
+    // High-pass to make it crisp, not thuddy
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 800;
+
+    const clickGain = ctx.createGain();
+    clickGain.gain.setValueAtTime(1.4, now);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+    click.connect(hp); hp.connect(clickGain); clickGain.connect(ctx.destination);
+    click.start(now);
+
+    // ── Secondary click — the shutter closing ─────────────────────────────
+    const click2 = ctx.createBufferSource();
+    click2.buffer = clickBuf;
+    const cg2 = ctx.createGain();
+    cg2.gain.setValueAtTime(0.6, now + 0.07);
+    cg2.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+    click2.connect(hp); hp.connect(cg2); cg2.connect(ctx.destination);
+    click2.start(now + 0.07);
+
+    // ── Flashbulb pop — brief high-freq sine "ping" + fast decay ─────────
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(3800, now);
+    osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+
+    const flashGain = ctx.createGain();
+    flashGain.gain.setValueAtTime(0.18, now);
+    flashGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+    osc.connect(flashGain); flashGain.connect(ctx.destination);
+    osc.start(now); osc.stop(now + 0.12);
+
+    // ── Film advance whirr — rising noise sweep ───────────────────────────
+    const whirrBuf = ctx.createBuffer(1, ctx.sampleRate * 0.22, ctx.sampleRate);
+    const wd = whirrBuf.getChannelData(0);
+    for (let i = 0; i < wd.length; i++) wd[i] = Math.random() * 2 - 1;
+    const whirr = ctx.createBufferSource();
+    whirr.buffer = whirrBuf;
+
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(300, now + 0.1);
+    bp.frequency.linearRampToValueAtTime(1800, now + 0.32);
+    bp.Q.value = 3;
+
+    const wg = ctx.createGain();
+    wg.gain.setValueAtTime(0.0, now + 0.1);
+    wg.gain.linearRampToValueAtTime(0.25, now + 0.18);
+    wg.gain.linearRampToValueAtTime(0.0,  now + 0.32);
+
+    whirr.connect(bp); bp.connect(wg); wg.connect(ctx.destination);
+    whirr.start(now + 0.1);
+
+  } catch(e) { console.warn('[audio] shutter failed:', e); }
+}
+
+// Card thud: soft low thump as a polaroid slaps down
+function playCardThud(delay = 0) {
+  try {
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime + delay;
+
+    // ── Body thump — low sine burst ───────────────────────────────────────
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(140, now);
+    osc.frequency.exponentialRampToValueAtTime(55, now + 0.07);
+
+    const thumpGain = ctx.createGain();
+    thumpGain.gain.setValueAtTime(0.9, now);
+    thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+    osc.connect(thumpGain); thumpGain.connect(ctx.destination);
+    osc.start(now); osc.stop(now + 0.12);
+
+    // ── Paper slap — short noise transient ───────────────────────────────
+    const slapBuf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate);
+    const sd = slapBuf.getChannelData(0);
+    for (let i = 0; i < sd.length; i++) {
+      sd[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.006));
+    }
+    const slap = ctx.createBufferSource();
+    slap.buffer = slapBuf;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 2200;
+
+    const sg = ctx.createGain();
+    sg.gain.setValueAtTime(0.5, now);
+    sg.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+    slap.connect(lp); lp.connect(sg); sg.connect(ctx.destination);
+    slap.start(now);
+
+  } catch(e) { console.warn('[audio] card thud failed:', e); }
+}
+
 // ── Polaroid develop animation ─────────────────────────────────────────────
-// Overlays a canvas with a dark greenish-brown "undeveloped" tint that lifts
-// over durationMs to reveal the image. Mimics the chemical development look
-// of a real Polaroid — dark emerges to colour with an ease-out curve.
+// Phase 1 (0–200ms):   Flashbulb overexposure — white blast fades fast
+// Phase 2 (200ms–end): Dark chemical overlay lifts with ease-out curve,
+//                       revealing the image through sepia/green chemical haze
 function developCanvas(canvas, durationMs) {
   const ctx   = canvas.getContext('2d');
   const W     = canvas.width;
   const H     = canvas.height;
   const start = performance.now();
 
-  // Undeveloped colour: very dark olive-brown, like unexposed film
-  // RGB: 18, 14, 10 — nearly black with a warm chemical tint
-  const R0 = 18, G0 = 14, B0 = 10;
+  const FLASH_MS   = 180;   // white overexposure duration
+  const DEVELOP_MS = durationMs - FLASH_MS;
 
-  // Capture the fully-rendered image once before we start painting over it
+  // Snapshot the fully-rendered image before we paint over it
   const imageData = ctx.getImageData(0, 0, W, H);
 
   const tick = (now) => {
-    const elapsed  = now - start;
-    const linear   = Math.min(elapsed / durationMs, 1);
-    // Ease-out cubic: fast reveal at start, settles gently at end
-    const t        = 1 - Math.pow(1 - linear, 3);
-    const overlay  = 1 - t; // opacity of the dark overlay (1→0)
-
-    // Restore the clean rendered frame each tick
+    const elapsed = now - start;
     ctx.putImageData(imageData, 0, 0);
 
-    if (overlay > 0.002) {
-      // Dark chemical overlay — fades out as image develops
+    if (elapsed < FLASH_MS) {
+      // ── Phase 1: flashbulb white overexposure ──────────────────────────
+      const flashT   = elapsed / FLASH_MS;
+      // Peaks instantly, decays with ease-in
+      const flashAmt = 1 - Math.pow(flashT, 2.5);
       ctx.save();
-      ctx.globalAlpha = overlay;
-      ctx.fillStyle = `rgb(${R0},${G0},${B0})`;
+      ctx.globalAlpha = flashAmt * 0.92;
+      ctx.fillStyle   = '#ffffff';
       ctx.fillRect(0, 0, W, H);
-
-      // Add a subtle green-tinted sheen at the start (undeveloped silver halide)
-      if (overlay > 0.3) {
-        ctx.globalAlpha = (overlay - 0.3) * 0.25;
-        ctx.fillStyle = 'rgb(30, 42, 20)';
-        ctx.fillRect(0, 0, W, H);
-      }
       ctx.restore();
-
       requestAnimationFrame(tick);
+
+    } else {
+      // ── Phase 2: chemical development ─────────────────────────────────
+      const devElapsed = elapsed - FLASH_MS;
+      const linear     = Math.min(devElapsed / DEVELOP_MS, 1);
+      // Ease-out quint: punchy reveal that slows dramatically near the end
+      const t          = 1 - Math.pow(1 - linear, 5);
+      const overlay    = 1 - t;
+
+      if (overlay > 0.002) {
+        ctx.save();
+
+        // Base dark chemical layer — very dark warm brown
+        ctx.globalAlpha = overlay;
+        ctx.fillStyle   = 'rgb(16, 11, 7)';
+        ctx.fillRect(0, 0, W, H);
+
+        // Green-silver halide shimmer — fades out in first half of develop
+        if (overlay > 0.45) {
+          ctx.globalAlpha = (overlay - 0.45) * 0.35;
+          ctx.fillStyle   = 'rgb(22, 38, 14)';
+          ctx.fillRect(0, 0, W, H);
+        }
+
+        // Warm amber blush as image emerges — peaks mid-develop, fades
+        const amberPeak = Math.sin(linear * Math.PI) * 0.18;
+        if (amberPeak > 0.01) {
+          ctx.globalAlpha = amberPeak;
+          ctx.fillStyle   = 'rgb(80, 40, 5)';
+          ctx.fillRect(0, 0, W, H);
+        }
+
+        ctx.restore();
+        requestAnimationFrame(tick);
+      }
     }
-    // Done — clean frame is already restored via putImageData above
   };
 
   requestAnimationFrame(tick);
@@ -1380,15 +1524,17 @@ function captureAndShowPhoto() {
   drawPolaroidToCanvas(partnerCanvas, remoteSrc, 'PARTNER', false, stamp, 1, dpr);
   document.getElementById('photo-modal').classList.add('show');
 
-  // ── Polaroid develop animation ─────────────────────────────────────────
-  // Overlays a dark "undeveloped chemical" layer on each photo canvas that
-  // lifts to reveal the image over DEVELOP_MS milliseconds.
-  // Uses an ease-out curve so the image emerges quickly then settles.
-  const DEVELOP_MS = 2200;
+  // ── Sound + develop ────────────────────────────────────────────────────
+  // Shutter fires immediately; card thuds timed to match fling animations
+  playShutter();
+  // flingLeft lands at ~0.1s + 0.7s = 0.8s, flingRight at ~0.25s + 0.7s = 0.95s
+  playCardThud(0.80);
+  playCardThud(0.95);
+
+  const DEVELOP_MS = 3200;
   [youCanvas, partnerCanvas].forEach(canvas => developCanvas(canvas, DEVELOP_MS));
 
-  // Build composite canvas and send to partner so they get the identical image.
-  // Delay until after develop animation so the sent image is the final result.
+  // Build composite and send to partner after develop completes
   setTimeout(() => {
     try {
       const SC = 2;
